@@ -85,7 +85,7 @@ export function buildGUI(app) {
   render.add(p, 'showTrail').name('show trail');
   render.add(p, 'showAgents').name('show agents');
   render.add(p, 'displayScale', 0, 500, 0.5).name('display scale (0 = auto)');
-  render.add(p, 'trailThreshold', 0, 0.99, 0.01).name('3D: point threshold');
+  render.add(p, 'trailThreshold', 0, 2, 0.01).name('3D: draw above × tube level');
   render.add(p, 'pointSize', 0.2, 4, 0.1).name('3D: point size');
   render.add(app.actions, 'resetCamera').name('reset camera');
   render.add(app.actions, 'screenshot').name('save screenshot');

@@ -163,17 +163,22 @@ export class View {
       }
       this.tex.needsUpdate = true;
     } else if (p.showTrail) {
+      // 3D: draw a cell when its trail is above trailThreshold × the "tube level" (the median trail
+      // at the agents' cells, away from food). That shows the tubes themselves rather than the
+      // faint diffusion halo around them, which made the 3D view look foggy and blobby.
       const { nx, ny } = this.dims;
+      const level = p.displayScale > 0 ? p.displayScale : tubeLevel(sim, this.foodZone);
+      const thr = p.trailThreshold;
       const pos = this.trailObj.geometry.attributes.position, col = this.trailObj.geometry.attributes.color;
       const pa = pos.array, ca = col.array;
       let n = 0;
       for (let i = 0; i < data.length; i++) {
-        const v = 1 - Math.exp(-data[i] / scale);
-        if (v < p.trailThreshold) continue;
+        const v = data[i] / level;
+        if (v < thr) continue;
         const x = i % nx, y = ((i / nx) | 0) % ny, z = (i / (nx * ny)) | 0;
         pa[3 * n] = x + 0.5; pa[3 * n + 1] = y + 0.5; pa[3 * n + 2] = z + 0.5;
-        const f = (v - p.trailThreshold) / (1 - p.trailThreshold + 1e-6); // fade in above threshold
-        ca[4 * n] = 0; ca[4 * n + 1] = 0; ca[4 * n + 2] = 0; ca[4 * n + 3] = 0.05 + 0.5 * f;
+        const f = Math.min(1, (v - thr) / Math.max(1e-6, 1 - thr)); // darker towards the tube core
+        ca[4 * n] = 0; ca[4 * n + 1] = 0; ca[4 * n + 2] = 0; ca[4 * n + 3] = 0.08 + 0.5 * f;
         n++;
       }
       this.trailObj.geometry.setDrawRange(0, n);
@@ -268,6 +273,20 @@ export class View {
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
   }
+}
+
+// Typical trail value inside a tube: median trail at (up to 3 000 sampled) agents' cells that are
+// not next to food. Display only.
+function tubeLevel(sim, zone) {
+  const d = sim.trail.data, wrap = sim.params.boundary === 'wrap', vals = [];
+  const step = Math.max(1, Math.floor(sim.agentCount / 3000));
+  for (let i = 0; i < sim.agentCount; i += step) {
+    const c = sim.trail.cellOf(sim.px[i], sim.py[i], sim.pz[i], wrap);
+    if (c >= 0 && !(zone && zone[c])) vals.push(d[c]);
+  }
+  if (!vals.length) return 1;
+  vals.sort((a, b) => a - b);
+  return vals[vals.length >> 1] || 1;
 }
 
 // Display scale when displayScale = 0 ("auto"): 3 × the mean trail value of the cells away from

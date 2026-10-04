@@ -17,13 +17,14 @@ export const EXAMPLES = {
     food: 8,
   },
 
-  // The same rules in 3D (our extension: cone sensors, 64³). SO scaled down for the smaller grid,
-  // %p ≈3 (8 000 agents). Tuned: SO 4, agent count, food strength / radius. Food strength 5 (not
-  // 20): with many food sources, strong food pulls most agents into halos around the food.
+  // The same rules in 3D (our extension: cone sensors, 64³). Tuned, not from source: 4 000 agents
+  // (%p ≈1.5), SO 3, partial diffusion 0.3 — together they cut the median tube diameter from 14.6%
+  // to 5.3% of the box (NOTES.md "Thinner 3D tubes"). Food strength 5: with many food sources,
+  // stronger food pulls most agents into halos around the food.
   '3D · organic network (Jones rules in 3D)': {
     mode: '3d',
-    over: { agentCount: 8000, sensorAngle: 22.5, rotationAngle: 45, sensorOffset: 4, collision: true,
-            diffuse: 1, boundary: 'wrap', foodWeight: 0, foodStrength: 5, foodRadius: 2, ticksPerFrame: 4 },
+    over: { agentCount: 4000, sensorAngle: 22.5, rotationAngle: 45, sensorOffset: 3, collision: true,
+            diffuse: 0.3, boundary: 'wrap', foodWeight: 0, foodStrength: 5, foodRadius: 2, ticksPerFrame: 4 },
     food: 8,
   },
 

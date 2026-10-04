@@ -75,7 +75,8 @@ export const DEFAULTS_3D = {
   foodStrength: 20,
   foodPlaneZ: 32,
   showAgents: false,
-  trailThreshold: 0.35,
+  trailThreshold: 0.3,  // 3D: draw cells above 0.3 × the trail level inside tubes (display only)
+  pointSize: 1.0,       // 3D: point size in cells (display only)
 };
 
 // Applied on top of the current params when switching model (each model needs its own spawn).
