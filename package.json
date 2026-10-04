@@ -1,0 +1,9 @@
+{
+  "name": "physarum-3d",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "serve": "python3 -m http.server 8000",
+    "headless": "node tools/headless.mjs"
+  }
+}

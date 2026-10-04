@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Physarum 3D — v0 (CPU reference)</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0a0a10; color: #ddd; overflow: hidden;
+                 font: 12px/1.4 ui-monospace, Menlo, monospace; }
+    #view { position: absolute; inset: 0; }
+    #stats { position: absolute; left: 10px; top: 10px; padding: 6px 8px; background: #000a;
+             border-radius: 4px; white-space: pre; pointer-events: none; }
+    #help { position: absolute; left: 10px; bottom: 10px; padding: 6px 8px; background: #000a;
+            border-radius: 4px; color: #aaa; pointer-events: none; }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
+        "lil-gui": "https://cdn.jsdelivr.net/npm/lil-gui@0.19.2/dist/lil-gui.esm.min.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="view"></div>
+  <div id="stats"></div>
+  <div id="help">click: add food · shift-click: remove food · drag: orbit · right-drag: pan · wheel: zoom</div>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
