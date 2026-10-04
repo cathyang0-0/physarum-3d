@@ -5,13 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Physarum 3D — v0 (CPU reference)</title>
   <style>
-    html, body { margin: 0; height: 100%; background: #0a0a10; color: #ddd; overflow: hidden;
-                 font: 12px/1.4 ui-monospace, Menlo, monospace; }
+    html, body { margin: 0; height: 100%; background: #fff; color: #000; overflow: hidden;
+                 font: 11px/1.5 ui-monospace, Menlo, monospace; }
     #view { position: absolute; inset: 0; }
-    #stats { position: absolute; left: 10px; top: 10px; padding: 6px 8px; background: #000a;
-             border-radius: 4px; white-space: pre; pointer-events: none; }
-    #help { position: absolute; left: 10px; bottom: 10px; padding: 6px 8px; background: #000a;
-            border-radius: 4px; color: #aaa; pointer-events: none; }
+    #stats { position: absolute; left: 16px; top: 14px; white-space: pre; pointer-events: none; }
+    #help { position: absolute; left: 16px; bottom: 14px; color: #999; pointer-events: none; }
+    /* lil-gui: plain white / black theme */
+    .lil-gui {
+      --background-color: #fff; --text-color: #000; --title-background-color: #fff;
+      --title-text-color: #000; --widget-color: #eee; --hover-color: #e2e2e2;
+      --focus-color: #ddd; --number-color: #000; --string-color: #000;
+      --font-family: ui-monospace, Menlo, monospace; --font-size: 11px;
+    }
+    .lil-gui.root { border-left: 1px solid #e5e5e5; }
+    .lil-gui .title { border-bottom: 1px solid #eee; }
   </style>
   <script type="importmap">
     {

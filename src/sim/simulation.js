@@ -52,9 +52,11 @@ export class Simulation {
   spawnAgent(i) {
     const p = this.params, t = this.trail, r = this.rand;
     const aroundFood = p.spawnAt === 'food' && this.sources.length > 0;
-    for (let attempt = 0; attempt < 1000; attempt++) {
+    // Around food first; if the balls around the food are full (collision on), the remaining
+    // agents fall back to uniform placement instead of failing.
+    for (let attempt = 0; attempt < 2000; attempt++) {
       let x, y, z;
-      if (aroundFood) {
+      if (aroundFood && attempt < 1000) {
         const s = this.sources[Math.floor(r() * this.sources.length)];
         const [dx, dy, dz] = this.randomInBall(p.spawnRadius);
         x = s.x + dx; y = s.y + dy; z = this.is2D ? 0.5 : s.z + dz;

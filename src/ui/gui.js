@@ -13,6 +13,9 @@ export function buildGUI(app) {
   const onChange = (key) => (STRUCTURAL.includes(key) ? () => app.reset() : live);
   const add = (folder, key, ...args) => folder.add(p, key, ...args).onFinishChange(onChange(key));
 
+  // Mode sits at the top so it is easy to find. Switching loads that mode's defaults.
+  gui.add(p, 'mode', { '2D sanity (z = 1)': '2d', '3D': '3d' }).name('MODE').onChange((m) => app.setMode(m));
+
   const run = gui.addFolder('Run');
   run.add(p, 'running').name('running').listen();
   run.add(app.actions, 'stepOnce').name('step once');
@@ -20,7 +23,6 @@ export function buildGUI(app) {
   run.add(p, 'ticksPerFrame', 1, 20, 1).name('ticks / frame');
 
   const setup = gui.addFolder('Setup (resets)');
-  setup.add(p, 'mode', { '2D sanity (z = 1)': '2d', '3D': '3d' }).name('mode').onChange((m) => app.setMode(m));
   add(setup, 'gridX', 16, 512, 1);
   add(setup, 'gridY', 16, 512, 1);
   app.gridZController = add(setup, 'gridZ', 8, 256, 1);

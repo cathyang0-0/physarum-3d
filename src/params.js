@@ -31,7 +31,7 @@ export const DEFAULTS_2D = {
   spawnAt: 'uniform', spawnRadius: 12,
   // run / render
   running: true, ticksPerFrame: 1,
-  showTrail: true, showAgents: false, displayScale: 0, trailThreshold: 0.25, pointSize: 1.5,
+  showTrail: true, showAgents: false, displayScale: 0, trailThreshold: 0.25, pointSize: 0.6,
 };
 
 export const DEFAULTS_3D = {

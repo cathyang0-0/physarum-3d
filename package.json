@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "serve": "python3 -m http.server 8000",
+    "serve": "python3 tools/serve.py 8000",
     "headless": "node tools/headless.mjs"
   }
 }

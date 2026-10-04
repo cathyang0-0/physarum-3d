@@ -11,17 +11,10 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const WORLD_SIZE = 10; // longest grid side maps to this many world units
 
-// Colour ramp for trail values v in [0, 1].
-const STOPS = [[0, [10, 10, 16]], [0.35, [120, 40, 20]], [0.7, [235, 140, 40]], [1, [255, 245, 200]]];
-const LUT = new Uint8Array(256 * 3);
-for (let i = 0; i < 256; i++) {
-  const v = i / 255;
-  let k = 0;
-  while (k < STOPS.length - 2 && v > STOPS[k + 1][0]) k++;
-  const [v0, c0] = STOPS[k], [v1, c1] = STOPS[k + 1];
-  const f = (v - v0) / (v1 - v0);
-  for (let c = 0; c < 3; c++) LUT[i * 3 + c] = Math.round(c0[c] + f * (c1[c] - c0[c]));
-}
+// Minimal palette: white background, trail drawn in black (more attractant = darker).
+const BG = 0xffffff;
+const INK = 0x000000;
+const LINE = 0xcccccc;
 
 export class View {
   constructor(container) {
@@ -31,7 +24,7 @@ export class View {
     container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0a0a10);
+    this.scene.background = new THREE.Color(BG);
     this.camera = new THREE.PerspectiveCamera(40, 1, 0.01, 1000);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
@@ -64,7 +57,7 @@ export class View {
     this.root.updateMatrixWorld();
 
     // Bounding box
-    const box = new THREE.Box3Helper(new THREE.Box3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(nx, ny, nz)), 0x444455);
+    const box = new THREE.Box3Helper(new THREE.Box3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(nx, ny, nz)), LINE);
     this.root.add(box);
 
     if (this.is2D) {
@@ -80,11 +73,9 @@ export class View {
       const size = nx * ny * nz;
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(size * 3), 3).setUsage(THREE.DynamicDrawUsage));
-      g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(size * 3), 3).setUsage(THREE.DynamicDrawUsage));
-      const m = new THREE.PointsMaterial({
-        size: 1, vertexColors: true, transparent: true, opacity: 0.8,
-        blending: THREE.AdditiveBlending, depthWrite: false,
-      });
+      // RGBA per point: black, alpha = trail strength.
+      g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(size * 4), 4).setUsage(THREE.DynamicDrawUsage));
+      const m = new THREE.PointsMaterial({ size: 1, vertexColors: true, transparent: true, depthWrite: false });
       this.trailObj = new THREE.Points(g, m);
       this.trailObj.frustumCulled = false;
       this.root.add(this.trailObj);
@@ -92,16 +83,16 @@ export class View {
       // Food placement plane (translucent slice at z = foodPlaneZ)
       this.placePlane = new THREE.Mesh(
         new THREE.PlaneGeometry(nx, ny),
-        new THREE.MeshBasicMaterial({ color: 0x3399ff, transparent: true, opacity: 0.08, side: THREE.DoubleSide, depthWrite: false }),
+        new THREE.MeshBasicMaterial({ color: INK, transparent: true, opacity: 0.03, side: THREE.DoubleSide, depthWrite: false }),
       );
-      this.placePlane.add(new THREE.LineSegments(new THREE.EdgesGeometry(this.placePlane.geometry), new THREE.LineBasicMaterial({ color: 0x3399ff })));
+      this.placePlane.add(new THREE.LineSegments(new THREE.EdgesGeometry(this.placePlane.geometry), new THREE.LineBasicMaterial({ color: LINE })));
       this.root.add(this.placePlane);
     }
 
     // Agents
     const ag = new THREE.BufferGeometry();
     ag.setAttribute('position', new THREE.BufferAttribute(new Float32Array(sim.agentCount * 3), 3).setUsage(THREE.DynamicDrawUsage));
-    this.agentsObj = new THREE.Points(ag, new THREE.PointsMaterial({ size: 0.6, color: 0x88ccff, transparent: true, opacity: 0.6, depthWrite: false }));
+    this.agentsObj = new THREE.Points(ag, new THREE.PointsMaterial({ size: 0.6, color: INK, transparent: true, opacity: 0.5, depthWrite: false }));
     this.agentsObj.frustumCulled = false;
     this.root.add(this.agentsObj);
 
@@ -131,9 +122,8 @@ export class View {
     if (p.showTrail && this.is2D) {
       const td = this.texData;
       for (let i = 0; i < data.length; i++) {
-        const v = 1 - Math.exp(-data[i] / scale);
-        const l = Math.min(255, (v * 255) | 0) * 3;
-        td[4 * i] = LUT[l]; td[4 * i + 1] = LUT[l + 1]; td[4 * i + 2] = LUT[l + 2]; td[4 * i + 3] = 255;
+        const g = 255 - ((255 * (1 - Math.exp(-data[i] / scale))) | 0); // white → black
+        td[4 * i] = g; td[4 * i + 1] = g; td[4 * i + 2] = g; td[4 * i + 3] = 255;
       }
       this.tex.needsUpdate = true;
     } else if (p.showTrail) {
@@ -146,9 +136,8 @@ export class View {
         if (v < p.trailThreshold) continue;
         const x = i % nx, y = ((i / nx) | 0) % ny, z = (i / (nx * ny)) | 0;
         pa[3 * n] = x + 0.5; pa[3 * n + 1] = y + 0.5; pa[3 * n + 2] = z + 0.5;
-        const l = Math.min(255, (v * 255) | 0) * 3;
         const f = (v - p.trailThreshold) / (1 - p.trailThreshold + 1e-6); // fade in above threshold
-        ca[3 * n] = (LUT[l] / 255) * f; ca[3 * n + 1] = (LUT[l + 1] / 255) * f; ca[3 * n + 2] = (LUT[l + 2] / 255) * f;
+        ca[4 * n] = 0; ca[4 * n + 1] = 0; ca[4 * n + 2] = 0; ca[4 * n + 3] = 0.05 + 0.5 * f;
         n++;
       }
       this.trailObj.geometry.setDrawRange(0, n);
@@ -176,9 +165,12 @@ export class View {
     this.foodKey = key;
     this.foodGroup.traverse((o) => { o.geometry?.dispose(); o.material?.dispose(); });
     this.foodGroup.clear();
-    const geo = new THREE.SphereGeometry(Math.max(1, p.foodRadius), 16, 12);
+    // Food = a thin black ring (2D) or a small solid black sphere (3D).
+    const r = Math.max(1.5, p.foodRadius);
+    const geo = this.is2D ? new THREE.RingGeometry(r, r + 0.8, 32) : new THREE.SphereGeometry(r * 0.6, 16, 12);
+    const mat = new THREE.MeshBasicMaterial({ color: INK });
     for (const s of sim.sources) {
-      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x33e0ff, wireframe: true }));
+      const m = new THREE.Mesh(geo, mat);
       m.position.set(s.x, s.y, this.is2D ? 1 : s.z);
       this.foodGroup.add(m);
     }
