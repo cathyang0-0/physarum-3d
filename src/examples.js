@@ -6,6 +6,26 @@
 const OLD_2D_BASE = { gridX: 256, gridY: 256, agentCount: 9830, sensorAngle: 90, sensorOffset: 15 };
 
 export const EXAMPLES = {
+  // Jones 2010's dynamic regime (p.135–136): with RA 45 > SA 22.5 the network "never stabilizes
+  // completely" — it keeps branching and closing loops ("network length is sacrificed for network
+  // connectivity"). Fixed population, so it never fades. All values from Jones 2010 Table 1
+  // (200², %p 7.5, SA 22.5, RA 45, SO 9, periodic) except food strength / radius (tuned).
+  '2D · organic network (Jones 2010)': {
+    mode: '2d',
+    over: { agentCount: 3000, sensorAngle: 22.5, rotationAngle: 45, sensorOffset: 9, collision: true,
+            boundary: 'wrap', foodWeight: 0, foodStrength: 20, foodRadius: 2, ticksPerFrame: 5 },
+    food: 8,
+  },
+
+  // The same rules in 3D (our extension: cone sensors, 64³). SO scaled down for the smaller grid,
+  // %p ≈3 (8 000 agents). Tuned: SO 4, agent count, food strength / radius.
+  '3D · organic network (Jones rules in 3D)': {
+    mode: '3d',
+    over: { agentCount: 8000, sensorAngle: 22.5, rotationAngle: 45, sensorOffset: 4, collision: true,
+            diffuse: 1, boundary: 'wrap', foodWeight: 0, foodStrength: 20, foodRadius: 2, ticksPerFrame: 4 },
+    food: 8,
+  },
+
   // Jones 2010 §4.2 "plasmodial shrinkage": a dense sheet (≈50% of cells) loses agents at random
   // (0.00025 per agent per step, never readmitted) and contracts onto the food. Source values:
   // SA 45, RA 45, SO 9, 300×300, removal 0.00025. Tuned: disc-shaped start (instead of the full
@@ -62,6 +82,6 @@ export const EXAMPLES = {
 
 // What the 2D / 3D toggle loads: the best-performing setup for each mode.
 export const MAIN = {
-  '2d': '2D · Jones 2010 shrinkage (sheet → network)',
-  '3d': '3D · shrinkage (ball → network)',
+  '2d': '2D · organic network (Jones 2010)',
+  '3d': '3D · organic network (Jones rules in 3D)',
 };
