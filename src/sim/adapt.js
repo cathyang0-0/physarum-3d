@@ -6,8 +6,11 @@
 //
 //   every `adaptInterval` ticks, for each agent, density = agents in a (2r+1)^d window / window size
 //     density > adaptHigh  → removed with probability adaptRemoveProb   (crowded: thins blobs)
-//     density < adaptLow   → divides with probability adaptDivideProb   (sparse: repairs thin,
-//                                                                         stretched tubes)
+//     adaptDivideMin < density < adaptLow
+//                          → divides with probability adaptDivideProb   (sparse: repairs thin,
+//                                                                         stretched tubes; the
+//                                                                         lower bound stops lone
+//                                                                         wanderers multiplying)
 //   population stays within [adaptMinAgents, capacity]
 //
 // Densities are computed from a snapshot before any agent is added or removed, so the result does
@@ -40,15 +43,21 @@ export function adaptPopulation(sim) {
     [src, dst] = [dst, src];
   }
   const windowSum = src;
-  const volume = (2 * r + 1) ** (sim.is2D ? 2 : 3);
+  // Window volume = in-bounds cells only. (Dividing by the full (2r+1)^d made agents near walls —
+  // up to 8× in a 3D corner — look sparse, so they kept dividing and grew tubes into the corners.)
+  const span = (c, n) => (wrap ? 2 * r + 1 : Math.min(c + r, n - 1) - Math.max(c - r, 0) + 1);
+  const volumeAt = (cell) => {
+    const x = cell % t.nx, y = ((cell / t.nx) | 0) % t.ny, z = (cell / (t.nx * t.ny)) | 0;
+    return span(x, t.nx) * span(y, t.ny) * (t.nz > 1 ? span(z, t.nz) : 1);
+  };
 
   // 3. decide from the snapshot: who is removed, who divides
   const rand = sim.rand;
   const remove = [], divide = [];
   for (let i = 0; i < n0; i++) {
-    const d = cells[i] < 0 ? 0 : windowSum[cells[i]] / volume;
+    const d = cells[i] < 0 ? 0 : windowSum[cells[i]] / volumeAt(cells[i]);
     if (d > p.adaptHigh) { if (rand() < p.adaptRemoveProb) remove.push(i); }
-    else if (d < p.adaptLow) { if (rand() < p.adaptDivideProb) divide.push(i); }
+    else if (d < p.adaptLow && d > p.adaptDivideMin) { if (rand() < p.adaptDivideProb) divide.push(i); }
   }
 
   // 4. apply. Division first (parents are still at their indices), then removal from the back so

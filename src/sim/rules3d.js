@@ -35,6 +35,8 @@ export function stepAgents3D(sim) {
     randomBranch: p.bothSidesBetter === 'random',
     weighted: p.steering === 'weighted',
     randomTurnProb: p.randomTurnProb,
+    reflect: p.wallResponse === 'reflect',
+    respawn: p.wallResponse === 'respawn',
   };
   const n = sim.agentCount;
 
@@ -155,6 +157,17 @@ function move(ctx, i) {
   const target = trail.cellOf(x, y, z, wrap);
   const current = trail.cellOf(sim.px[i], sim.py[i], sim.pz[i], wrap);
 
+  if (target < 0 && ctx.respawn) {
+    sim.respawnAgent(i); // wallResponse 'respawn' (SPEC §3 option; not in Jones)
+    return;
+  }
+  if (target < 0 && ctx.reflect) {
+    // wallResponse 'reflect' (not in Jones): mirror the heading off the wall(s) it would cross.
+    if (x < 0 || x >= trail.nx) sim.hx[i] = -sim.hx[i];
+    if (y < 0 || y >= trail.ny) sim.hy[i] = -sim.hy[i];
+    if (z < 0 || z >= trail.nz) sim.hz[i] = -sim.hz[i];
+    return;
+  }
   const blocked = target < 0 || (sim.occupancy && target !== current && sim.occupancy[target]);
   if (blocked) {
     sim.randomizeHeading3D(i);

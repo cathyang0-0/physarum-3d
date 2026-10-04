@@ -46,6 +46,8 @@ export function buildGUI(app) {
   add(model, 'diffuse', 0, 1, 0.01).name('diffuse (1 = Jones)');
   add(model, 'bothSidesBetter', ['towardLarger', 'random']).name('F < all sides');
   add(model, 'boundary', ['wrap', 'bounce', 'absorb']).name('boundary');
+  add(model, 'wallResponse', ['random', 'reflect', 'respawn']).name('at a wall');
+  add(model, 'wallRepel').name('walls repel sensors');
   add(model, 'randomTurnProb', 0, 1, 0.01).name('random turn prob.');
   app.sensorCountController = add(model, 'sensorCount', 2, 16, 1).name('3D: cone sensors');
   app.steeringController = add(model, 'steering', ['argmax', 'weighted']).name('3D: steering');
@@ -55,8 +57,9 @@ export function buildGUI(app) {
   add(adapt, 'adapt').name('adapt population');
   add(adapt, 'adaptInterval', 1, 50, 1).name('check every N ticks');
   add(adapt, 'adaptRadius', 1, 10, 1).name('window radius');
-  add(adapt, 'adaptLow', 0, 1, 0.01).name('divide below density');
-  add(adapt, 'adaptHigh', 0, 1, 0.01).name('remove above density');
+  add(adapt, 'adaptLow', 0, 50, 0.01).name('divide below density');
+  add(adapt, 'adaptDivideMin', 0, 50, 0.01).name('…and above density');
+  add(adapt, 'adaptHigh', 0, 50, 0.01).name('remove above density');
   add(adapt, 'adaptDivideProb', 0, 1, 0.01).name('divide prob.');
   add(adapt, 'adaptRemoveProb', 0, 1, 0.01).name('remove prob.');
   add(adapt, 'adaptMinAgents', 1, 100000, 1).name('min agents');

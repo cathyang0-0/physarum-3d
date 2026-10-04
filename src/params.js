@@ -25,6 +25,8 @@ export const DEFAULTS_2D = {
   sensorOffset: 15,    // SO, cells — arXiv:1511.07654 §3
   collision: true,     // Jones-faithful for the sanity check
   boundary: 'wrap',
+  wallRepel: false,      // sensors outside the walls read −∞ (agents avoid walls). Not in Jones
+  wallResponse: 'random', // non-wrap walls: 'random' heading (Jones's failed-move rule) | 'reflect' | 'respawn'
   sensorCount: 4,      // 3D only
   steering: 'argmax',  // 3D only
   randomTurnProb: 0,
@@ -47,6 +49,7 @@ export const DEFAULTS_2D = {
   adaptRadius: 3,        // window = (2r+1)^d cells
   adaptLow: 0.2,         // density (agents per cell in the window) below this → may divide
   adaptHigh: 0.6,        // density above this → may be removed
+  adaptDivideMin: 0,     // ...but only above this density (excludes lone agents; needed in 3D)
   adaptDivideProb: 0.5,  // per check
   adaptRemoveProb: 0.1,  // per check
   adaptMinAgents: 200,

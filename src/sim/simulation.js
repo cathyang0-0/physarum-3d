@@ -138,10 +138,14 @@ export class Simulation {
   // where fw is the agent's food weight (see makeFoodWeight).
   makeSampler() {
     const t = this.trail, wrap = this.params.boundary === 'wrap', food = this.foodField;
-    if (this.params.foodWeight === 0 || this.sources.length === 0) return (x, y, z) => t.sample(x, y, z, wrap);
+    // wallRepel (not in Jones): a sensor outside the domain reads −∞ instead of 0, so agents turn
+    // away from walls one sensor offset before reaching them.
+    const outside = this.params.wallRepel ? -Infinity : 0;
+    const useFood = this.params.foodWeight !== 0 && this.sources.length > 0;
+    if (!useFood && outside === 0) return (x, y, z) => t.sample(x, y, z, wrap);
     return (x, y, z, fw) => {
       const i = t.cellOf(x, y, z, wrap);
-      return i < 0 ? 0 : t.data[i] + fw * food[i];
+      return i < 0 ? outside : useFood ? t.data[i] + fw * food[i] : t.data[i];
     };
   }
 
@@ -173,6 +177,24 @@ export class Simulation {
   copyAgent(from, to) {
     for (const a of [this.px, this.py, this.pz, this.heading, this.hx, this.hy, this.hz, this.phase, this.energy]) {
       if (a) a[to] = a[from];
+    }
+  }
+
+  // Move agent i to a uniformly random free cell with a random heading (wallResponse 'respawn').
+  respawnAgent(i) {
+    const t = this.trail, r = this.rand;
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const x = r() * t.nx, y = r() * t.ny, z = this.is2D ? 0.5 : r() * t.nz;
+      const c = t.cellOf(x, y, z, false);
+      if (this.occupancy && this.occupancy[c]) continue;
+      if (this.occupancy) {
+        this.occupancy[t.cellOf(this.px[i], this.py[i], this.pz[i], false)] = 0;
+        this.occupancy[c] = 1;
+      }
+      this.px[i] = x; this.py[i] = y; this.pz[i] = z;
+      this.heading[i] = r() * 2 * Math.PI;
+      this.randomizeHeading3D(i);
+      return;
     }
   }
 

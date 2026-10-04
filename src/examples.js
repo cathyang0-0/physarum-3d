@@ -26,8 +26,19 @@ export const EXAMPLES = {
   // Thin 3D tubes need collision off + partial diffusion; food pins the network.
   '3D · thin network through food': {
     mode: '3d',
-    over: { collision: false, diffuse: 0.1, boundary: 'absorb', foodWeight: 0,
-            foodStrength: 500, foodRadius: 2, ticksPerFrame: 2 },
+    over: { collision: false, diffuse: 0.1, boundary: 'absorb', wallRepel: true, wallResponse: 'reflect',
+            foodWeight: 0, foodStrength: 500, foodRadius: 2, ticksPerFrame: 2 },
+    food: 6,
+  },
+
+  // Adaptation in 3D: every food gets connected, but the population grows and tube tips keep
+  // extending into the corners. Kept as a comparison, not a solution (NOTES.md).
+  '3D · network + adaptation (all food linked, extra tubes)': {
+    mode: '3d',
+    over: { collision: false, diffuse: 0.1, boundary: 'absorb', wallRepel: true, wallResponse: 'reflect',
+            foodWeight: 0, foodStrength: 500, foodRadius: 2, ticksPerFrame: 2,
+            adapt: true, adaptRadius: 2, adaptHigh: 10, adaptLow: 2, adaptDivideMin: 1,
+            adaptDivideProb: 0.5, adaptRemoveProb: 0.1, maxAgents: 120000 },
     food: 6,
   },
 

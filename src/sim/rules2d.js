@@ -23,6 +23,8 @@ export function stepAgents2D(sim) {
     depositOf: sim.makeDepositor(),
     randomBranch: p.bothSidesBetter === 'random',
     randomTurnProb: p.randomTurnProb,
+    reflect: p.wallResponse === 'reflect',
+    respawn: p.wallResponse === 'respawn',
   };
   const n = sim.agentCount;
 
@@ -95,6 +97,18 @@ function move(ctx, i) {
 
   // Failed move: outside a non-wrapping boundary, or (collision on) target cell occupied
   // by another agent. Jones: the agent stays put and picks a new random heading.
+  if (target < 0 && ctx.respawn) {
+    sim.respawnAgent(i); // wallResponse 'respawn' (SPEC §3 option; not in Jones)
+    return;
+  }
+  if (target < 0 && ctx.reflect) {
+    // wallResponse 'reflect' (not in Jones): mirror the heading off the wall(s) it would cross.
+    let hx = Math.cos(a), hy = Math.sin(a);
+    if (x < 0 || x >= trail.nx) hx = -hx;
+    if (y < 0 || y >= trail.ny) hy = -hy;
+    sim.heading[i] = Math.atan2(hy, hx);
+    return;
+  }
   const blocked = target < 0 || (sim.occupancy && target !== current && sim.occupancy[target]);
   if (blocked) {
     sim.heading[i] = rand() * 2 * Math.PI;
