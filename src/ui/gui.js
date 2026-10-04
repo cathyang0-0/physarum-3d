@@ -1,31 +1,22 @@
-// lil-gui panel. Every model parameter is exposed here.
+// Parameter sidebar (lil-gui). Every model parameter is exposed here; the everyday controls
+// (mode, model, play, reset, food, examples) are in the top toolbar (toolbar.js).
 // Structural parameters (grid size, agent count, seed, collision, spawn) reset the simulation;
-// everything else is live.
+// everything else is live. The sidebar starts hidden; "Parameters" in the toolbar shows it.
 
 import GUI from 'lil-gui';
 import { STRUCTURAL } from '../params.js';
-import { EXAMPLES } from '../examples.js';
 
 // `app` provides: params, sim, reset(), setMode(mode), actions {...}
 export function buildGUI(app) {
   const p = app.params;
-  const gui = new GUI({ title: 'Physarum 3D — CPU reference' });
+  const gui = new GUI({ title: 'Parameters', autoPlace: true });
+  gui.domElement.classList.add('hidden');
   const live = () => {};
   const onChange = (key) => (STRUCTURAL.includes(key) ? () => app.reset() : live);
   const add = (folder, key, ...args) => folder.add(p, key, ...args).onFinishChange(onChange(key));
 
-  // Mode sits at the top so it is easy to find. Switching loads that mode's defaults.
-  gui.add(p, 'mode', { '2D sanity (z = 1)': '2d', '3D': '3d' }).name('MODE').onChange((m) => app.setMode(m));
-  gui.add(p, 'model', { 'Jones (source)': 'jones', 'growth (ours)': 'growth' }).name('MODEL')
-    .onChange((m) => app.setModel(m));
-
-  const run = gui.addFolder('Run');
-  run.add(p, 'running').name('running').listen();
-  run.add(app.actions, 'stepOnce').name('step once');
-  run.add(app.actions, 'reset').name('reset (same seed)');
-  run.add(p, 'ticksPerFrame', 1, 20, 1).name('ticks / frame');
-
   const setup = gui.addFolder('Setup (resets)');
+  setup.add(p, 'ticksPerFrame', 1, 50, 1).name('ticks / frame (speed)');
   add(setup, 'gridX', 16, 512, 1);
   add(setup, 'gridY', 16, 512, 1);
   app.gridZController = add(setup, 'gridZ', 8, 256, 1);
@@ -88,10 +79,7 @@ export function buildGUI(app) {
   // Long-range food smell (not in Jones; 0 = off): sensors read trail + weight · Σ e^(−d/reach)
   food.add(p, 'foodWeight', 0, 10, 0.05).name('smell weight (0 = off)');
   food.add(p, 'foodReach', 1, 200, 1).name('smell reach');
-  app.planeController = food.add(p, 'foodPlaneZ', 0, 256, 1).name('3D: plane depth z');
-  food.add(p, 'scatterCount', 1, 50, 1).name('scatter N');
-  food.add(app.actions, 'scatterFood').name('scatter N random food');
-  food.add(app.actions, 'clearFood').name('clear food');
+  food.add(p, 'scatterCount', 1, 50, 1).name('"+ Random food" adds N');
 
   const render = gui.addFolder('Render');
   render.add(p, 'showTrail').name('show trail');
@@ -103,12 +91,12 @@ export function buildGUI(app) {
   render.add(app.actions, 'screenshot').name('save screenshot');
 
   const presets = gui.addFolder('Presets');
-  presets.add(app.actions, 'example', Object.keys(EXAMPLES)).name('examples')
-    .onChange((name) => app.actions.loadExample(name));
   presets.add(app.actions, 'savePreset').name('save preset (.json)');
   presets.add(app.actions, 'loadPreset').name('load preset…');
   presets.add(app.actions, 'loadDefaults').name('defaults for this mode');
 
+  // Folders start closed except the core model parameters.
+  for (const f of gui.folders) if (f !== model) f.close();
   return gui;
 }
 
@@ -116,12 +104,10 @@ export function buildGUI(app) {
 export function refreshGUI(app) {
   app.gui.controllersRecursive().forEach((c) => c.updateDisplay());
   const is3D = app.params.mode === '3d';
-  [app.gridZController, app.sensorCountController, app.steeringController, app.planeController]
-    .forEach((c) => c.enable(is3D));
+  [app.gridZController, app.sensorCountController, app.steeringController].forEach((c) => c.enable(is3D));
   const growth = app.params.model === 'growth';
   app.growthFolder.controllersRecursive().forEach((c) => c.enable(growth));
   app.adaptFolder.controllersRecursive().forEach((c) => c.enable(!growth));
   app.agentCountController.enable(!growth);
   app.collisionController.enable(!growth); // growth always uses collision
-  app.planeController.max(Math.max(1, app.params.gridZ - 1));
 }

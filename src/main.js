@@ -3,6 +3,7 @@
 import { Simulation } from './sim/simulation.js';
 import { View } from './render/view.js';
 import { buildGUI, refreshGUI } from './ui/gui.js';
+import { buildToolbar, updateToolbar } from './ui/toolbar.js';
 import { defaultsFor, modelSwitch } from './params.js';
 import { makePreset, downloadJSON, pickPresetFile } from './ui/presets.js';
 import { EXAMPLES } from './examples.js';
@@ -15,10 +16,17 @@ const stats = document.getElementById('stats');
 const app = {
   params,
   sim,
+  view,
   reset() {
     sim.reset();
     view.rebuild(sim);
-    if (app.gui) refreshGUI(app);
+    app.refresh();
+  },
+  // Bring the sidebar and toolbar in line with params (after any switch or load).
+  refresh() {
+    if (!app.gui) return;
+    refreshGUI(app);
+    updateToolbar(app);
   },
   // Switching mode loads that mode's default preset (each mode's defaults are a coherent set),
   // keeping the current model.
@@ -37,7 +45,7 @@ const app = {
   actions: {
     stepOnce: () => { sim.step(); },
     reset: () => app.reset(),
-    randomSeed: () => { params.seed = Math.floor(Math.random() * 100000); refreshGUI(app); app.reset(); },
+    randomSeed: () => { params.seed = Math.floor(Math.random() * 100000); app.reset(); },
     scatterFood: () => sim.scatterSources(params.scatterCount),
     clearFood: () => sim.clearSources(),
     resetCamera: () => view.resetCamera(),
@@ -55,13 +63,11 @@ const app = {
         sim.clearSources();
         (preset.food ?? []).forEach((s) => sim.addSource(s, s.strength, s.type));
         app.reset();
-        refreshGUI(app);
       } catch (e) {
         alert(`Could not load preset: ${e.message}`);
       }
     },
     loadDefaults: () => app.setMode(params.mode),
-    example: Object.keys(EXAMPLES)[0], // shown in the dropdown; loading happens on change
     loadExample: (name) => {
       const ex = EXAMPLES[name];
       Object.assign(params, defaultsFor(ex.mode), { running: true });
@@ -83,13 +89,45 @@ const app = {
   },
 };
 app.gui = buildGUI(app);
+buildToolbar(app);
 view.rebuild(sim);
-refreshGUI(app);
+app.refresh();
 
 // ---- Mouse: click = add food, shift-click = remove. A drag (orbit) is not a click. ----------
+// 3D: the food plane moves with Shift + wheel or the ↑ / ↓ keys (or the toolbar slider).
 let down = null;
 const canvas = view.renderer.domElement;
 canvas.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY }; });
+
+let lastMouse = null;
+const updatePreview = () => {
+  const pos = lastMouse && view.pickOnPlane(lastMouse.x, lastMouse.y, params.foodPlaneZ);
+  view.showPreview(pos);
+};
+canvas.addEventListener('pointermove', (e) => { lastMouse = { x: e.clientX, y: e.clientY }; updatePreview(); });
+canvas.addEventListener('pointerleave', () => { lastMouse = null; view.showPreview(null); });
+
+function movePlane(dz) {
+  if (params.mode !== '3d') return;
+  params.foodPlaneZ = Math.min(Math.max(0, params.foodPlaneZ + dz), params.gridZ - 1);
+  view.flashPlane();
+  updateToolbar(app);
+  updatePreview();
+}
+// Capture phase on the container, so OrbitControls (listening on the canvas) never sees the
+// Shift+wheel event and does not zoom.
+document.getElementById('view').addEventListener('wheel', (e) => {
+  if (!e.shiftKey || params.mode !== '3d') return;
+  e.preventDefault();
+  e.stopPropagation();
+  const d = e.deltaY !== 0 ? e.deltaY : e.deltaX; // macOS turns Shift+wheel into horizontal scroll
+  movePlane(d > 0 ? -1 : 1);
+}, { capture: true, passive: false });
+window.addEventListener('keydown', (e) => {
+  if (e.target.closest?.('input, select, textarea, .lil-gui')) return;
+  if (e.key === 'ArrowUp') { movePlane(1); e.preventDefault(); }
+  if (e.key === 'ArrowDown') { movePlane(-1); e.preventDefault(); }
+});
 canvas.addEventListener('pointerup', (e) => {
   if (!down || e.button !== 0 || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 4) return;
   const pos = view.pickOnPlane(e.clientX, e.clientY, params.foodPlaneZ);

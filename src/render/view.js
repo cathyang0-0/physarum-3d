@@ -101,6 +101,16 @@ export class View {
     this.root.add(this.foodGroup);
     this.foodKey = '';
 
+    // Hover preview: where a click would place food
+    const pr = Math.max(1.2, Math.max(nx, ny) / 110);
+    this.preview = new THREE.Mesh(
+      this.is2D ? new THREE.CircleGeometry(pr, 24) : new THREE.SphereGeometry(1.2, 16, 12),
+      new THREE.MeshBasicMaterial({ color: INK, transparent: true, opacity: 0.3, depthWrite: false }),
+    );
+    this.preview.visible = false;
+    this.root.add(this.preview);
+    this.planeFlash = 0; // > 0 right after the plane moved: draw it darker for a moment
+
     this.resetCamera();
   }
 
@@ -156,26 +166,40 @@ export class View {
       this.agentsObj.material.size = (this.is2D ? 1 : 0.5) * this.root.scale.x * 2;
     }
 
-    if (this.placePlane) this.placePlane.position.set(this.dims.nx / 2, this.dims.ny / 2, p.foodPlaneZ);
+    if (this.placePlane) {
+      this.placePlane.position.set(this.dims.nx / 2, this.dims.ny / 2, p.foodPlaneZ);
+      this.planeFlash = Math.max(0, this.planeFlash - 0.03);
+      this.placePlane.material.opacity = 0.03 + 0.12 * this.planeFlash;
+    }
     this.updateFood(sim, p);
   }
 
   updateFood(sim, p) {
-    const key = JSON.stringify(sim.sources.map((s) => [s.x, s.y, s.z])) + p.foodRadius;
+    const key = JSON.stringify(sim.sources.map((s) => [s.x, s.y, s.z]));
     if (key === this.foodKey) return;
     this.foodKey = key;
     this.foodGroup.traverse((o) => { o.geometry?.dispose(); o.material?.dispose(); });
     this.foodGroup.clear();
-    // Food = a thin black ring showing the eating radius (2D), or a small fixed-size black
-    // sphere (3D; a sphere of the full radius would hide the network).
-    const r = Math.max(1.5, p.foodRadius);
-    const geo = this.is2D ? new THREE.RingGeometry(r, r + 0.8, 32) : new THREE.SphereGeometry(1.2, 16, 12);
+    // Food = a small fixed-size black dot (2D) or sphere (3D), the same in every model, so the
+    // pictures are comparable. (Its size does not show foodRadius.)
+    const r = Math.max(1.2, Math.max(this.dims.nx, this.dims.ny) / 110);
+    const geo = this.is2D ? new THREE.CircleGeometry(r, 24) : new THREE.SphereGeometry(1.2, 16, 12);
     const mat = new THREE.MeshBasicMaterial({ color: INK });
     for (const s of sim.sources) {
       const m = new THREE.Mesh(geo, mat);
       m.position.set(s.x, s.y, this.is2D ? 1 : s.z);
       this.foodGroup.add(m);
     }
+  }
+
+  // Show (pos in grid coords) or hide (null) the food preview.
+  showPreview(pos) {
+    this.preview.visible = !!pos;
+    if (pos) this.preview.position.set(pos.x, pos.y, this.is2D ? 1 : pos.z);
+  }
+
+  flashPlane() {
+    this.planeFlash = 1;
   }
 
   // Mouse → grid coordinates on the placement plane (z = foodPlaneZ; z = 0.5 in 2D).
