@@ -61,10 +61,22 @@ export const DEFAULTS_3D = {
 };
 
 // Applied on top of the current params when switching model (each model needs its own spawn).
-export const MODEL_SWITCH = {
-  jones: { spawnAt: 'uniform', spawnRadius: 12, foodRadius: 2 },
-  growth: { spawnAt: 'center', spawnRadius: 6, collision: true, foodRadius: 8 },
+// Distances in the growth model are in cells, so 3D (64 cells wide) uses ~¼ of the 2D (256)
+// values — with the 2D values, food spheres in 3D overlap into one blob. All tuned.
+const MODEL_SWITCH = {
+  '2d': {
+    jones: { spawnAt: 'uniform', spawnRadius: 12, foodRadius: 2 },
+    growth: { spawnAt: 'center', spawnRadius: 6, collision: true, foodRadius: 8, foodReach: 30 },
+  },
+  '3d': {
+    jones: { spawnAt: 'uniform', spawnRadius: 12, foodRadius: 2 },
+    growth: { spawnAt: 'center', spawnRadius: 3, collision: true, foodRadius: 3, foodReach: 10 },
+  },
 };
+
+export function modelSwitch(model, mode) {
+  return MODEL_SWITCH[mode === '3d' ? '3d' : '2d'][model];
+}
 
 export function defaultsFor(mode) {
   return structuredClone(mode === '3d' ? DEFAULTS_3D : DEFAULTS_2D);

@@ -106,7 +106,7 @@ export class View {
 
   resetCamera() {
     if (this.is2D) this.camera.position.set(0, 0, 18);
-    else this.camera.position.set(11, -13, 9);
+    else this.camera.position.set(15, -18, 12);
     this.camera.up.set(0, 0, 1);
     if (this.is2D) this.camera.up.set(0, 1, 0);
     this.controls.target.set(0, 0, 0);

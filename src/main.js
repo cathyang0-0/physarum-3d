@@ -3,7 +3,7 @@
 import { Simulation } from './sim/simulation.js';
 import { View } from './render/view.js';
 import { buildGUI, refreshGUI } from './ui/gui.js';
-import { defaultsFor, MODEL_SWITCH } from './params.js';
+import { defaultsFor, modelSwitch } from './params.js';
 import { makePreset, downloadJSON, pickPresetFile } from './ui/presets.js';
 
 const params = defaultsFor('2d');
@@ -29,7 +29,7 @@ const app = {
   // Switching model applies its spawn settings. Growth starts from an inoculum on a food source
   // in the centre, plus N scattered food sources.
   setModel(model) {
-    Object.assign(params, MODEL_SWITCH[model], { model });
+    Object.assign(params, modelSwitch(model, params.mode), { model });
     if (model === 'growth') app.actions.inoculate();
     else { sim.clearSources(); app.reset(); }
   },
