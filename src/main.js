@@ -6,7 +6,7 @@ import { buildGUI, refreshGUI } from './ui/gui.js';
 import { buildToolbar, updateToolbar } from './ui/toolbar.js';
 import { defaultsFor, modelSwitch } from './params.js';
 import { makePreset, downloadJSON, pickPresetFile } from './ui/presets.js';
-import { EXAMPLES } from './examples.js';
+import { EXAMPLES, MAIN } from './examples.js';
 
 const params = defaultsFor('2d');
 const sim = new Simulation(params);
@@ -28,15 +28,12 @@ const app = {
     refreshGUI(app);
     updateToolbar(app);
   },
-  // Switching mode loads that mode's default preset (each mode's defaults are a coherent set),
-  // keeping the current model.
+  // The 2D / 3D toggle loads the best setup for that mode (examples.js MAIN).
   setMode(mode) {
-    const model = params.model;
-    Object.assign(params, defaultsFor(mode), { running: params.running });
-    app.setModel(model);
+    app.actions.loadExample(MAIN[mode]);
   },
   // Switching model applies its spawn settings. Growth starts from an inoculum on a food source
-  // in the centre, plus N scattered food sources.
+  // in the centre, plus N scattered food sources. (Only used by the growth example now.)
   setModel(model) {
     Object.assign(params, modelSwitch(model, params.mode), { model });
     if (model === 'growth') app.actions.inoculate();
@@ -67,12 +64,11 @@ const app = {
         alert(`Could not load preset: ${e.message}`);
       }
     },
-    loadDefaults: () => app.setMode(params.mode),
+    loadDefaults: () => app.setMode(params.mode), // = reload the main setup for this mode
     loadExample: (name) => {
       const ex = EXAMPLES[name];
-      Object.assign(params, defaultsFor(ex.mode), { running: true });
+      Object.assign(params, defaultsFor(ex.mode), ex.over, { running: true });
       if (ex.model === 'growth') { app.setModel('growth'); return; }
-      Object.assign(params, ex.over);
       sim.clearSources();
       sim.reset(); // re-seed the food rng
       sim.scatterSources(ex.food);
@@ -90,8 +86,7 @@ const app = {
 };
 app.gui = buildGUI(app);
 buildToolbar(app);
-view.rebuild(sim);
-app.refresh();
+app.setMode('2d'); // start on the main 2D setup
 
 // ---- Mouse: click = add food, shift-click = remove. A drag (orbit) is not a click. ----------
 // 3D: the food plane moves with Shift + wheel or the ↑ / ↓ keys (or the toolbar slider).

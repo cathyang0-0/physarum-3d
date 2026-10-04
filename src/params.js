@@ -5,12 +5,14 @@
 // Parameters that change array sizes or initial state: editing them triggers a reset.
 export const STRUCTURAL = ['mode', 'model', 'adapt', 'initialAgents', 'maxAgents', 'gridX', 'gridY', 'gridZ', 'agentCount', 'seed', 'collision', 'spawnAt', 'spawnRadius'];
 
+// Base values: Jones 2010 Table 1 (p.134). (Until 2026-10-04 the 2D base used the arXiv:1511.07654
+// values SA 90, SO 15 on 256²; examples tuned on that base pin those values explicitly.)
 const MODEL_FROM_SOURCE = {
-  sensorAngle: 90,     // SA, degrees — arXiv:1511.07654 §3
-  rotationAngle: 45,   // RA, degrees — arXiv:1511.07654 §3
-  stepSize: 1,         // cells per tick — arXiv:1511.07654 §3
-  deposit: 5,          // units per successful move — arXiv:1511.07654 §3
-  decay: 0.1,          // "damping" — arXiv:1511.07654 §3 (2012 paper: 0.07); see NOTES.md
+  sensorAngle: 45,     // SA, degrees — Jones 2010 Table 1 ("22.5 or 45 deg"); 45 = minimizing networks
+  rotationAngle: 45,   // RA, degrees — Jones 2010 Table 1
+  stepSize: 1,         // SS, cells per tick — Jones 2010 Table 1
+  deposit: 5,          // depT, per successful move — Jones 2010 Table 1
+  decay: 0.1,          // decayT — Jones 2010 Table 1; formula is our reading, see NOTES.md
   diffuse: 1,          // 1 = full 3×3 mean (Jones); < 1 = partial blur, tuned, not from source
   bothSidesBetter: 'towardLarger', // arXiv:1212.0023 Fig. 1b
 };
@@ -18,11 +20,11 @@ const MODEL_FROM_SOURCE = {
 export const DEFAULTS_2D = {
   mode: '2d',
   model: 'jones',      // 'jones' = source model; 'growth' = our extension (src/sim/growth.js)
-  gridX: 256, gridY: 256, gridZ: 1,
-  agentCount: 9830,    // ≈15% of the 256² lattice — tuned
+  gridX: 200, gridY: 200, gridZ: 1, // Jones 2010 Table 1: 200 × 200
+  agentCount: 6000,    // %p 15 of 200² — Jones 2010 Table 1 (%p 3–15)
   seed: 1,
   ...MODEL_FROM_SOURCE,
-  sensorOffset: 15,    // SO, cells — arXiv:1511.07654 §3
+  sensorOffset: 9,     // SO, cells — Jones 2010 Table 1
   collision: true,     // Jones-faithful for the sanity check
   boundary: 'wrap',
   wallRepel: false,      // sensors outside the walls read −∞ (agents avoid walls). Not in Jones

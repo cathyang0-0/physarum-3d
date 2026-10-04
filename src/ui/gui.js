@@ -93,7 +93,7 @@ export function buildGUI(app) {
   const presets = gui.addFolder('Presets');
   presets.add(app.actions, 'savePreset').name('save preset (.json)');
   presets.add(app.actions, 'loadPreset').name('load preset…');
-  presets.add(app.actions, 'loadDefaults').name('defaults for this mode');
+  presets.add(app.actions, 'loadDefaults').name('reload main setup for this mode');
 
   // Folders start closed except the core model parameters.
   for (const f of gui.folders) if (f !== model) f.close();

@@ -7,13 +7,10 @@ const $ = (id) => document.getElementById(id);
 export function buildToolbar(app) {
   const p = app.params;
 
+  // Clicking the active mode again reloads its setup (fresh start).
   $('modeSeg').addEventListener('click', (e) => {
     const m = e.target.dataset.mode;
-    if (m && m !== p.mode) app.setMode(m);
-  });
-  $('modelSeg').addEventListener('click', (e) => {
-    const m = e.target.dataset.model;
-    if (m && m !== p.model) app.setModel(m);
+    if (m) app.setMode(m);
   });
 
   $('playBtn').onclick = () => { p.running = !p.running; updateToolbar(app); };
@@ -38,7 +35,6 @@ export function buildToolbar(app) {
 export function updateToolbar(app) {
   const p = app.params;
   for (const b of $('modeSeg').children) b.classList.toggle('on', b.dataset.mode === p.mode);
-  for (const b of $('modelSeg').children) b.classList.toggle('on', b.dataset.model === p.model);
   $('playBtn').textContent = p.running ? 'Pause' : 'Play';
   $('planeCtl').style.display = p.mode === '3d' ? '' : 'none';
   $('help3d').style.display = p.mode === '3d' ? '' : 'none';

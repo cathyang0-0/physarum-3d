@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Physarum 3D — v0 (CPU reference)</title>
   <style>
-    :root { --bar: 44px; --line: #e5e5e5; --soft: #f2f2f2; --mute: #999; }
+    :root { --bar: 84px; --line: #e5e5e5; --soft: #f2f2f2; --mute: #999; }
     html, body { margin: 0; height: 100%; background: #fff; color: #000; overflow: hidden;
                  font: 11px/1.5 ui-monospace, Menlo, monospace; }
     #view { position: absolute; inset: var(--bar) 0 0 0; }
@@ -14,8 +14,11 @@
 
     /* ---- top toolbar ---- */
     #bar { position: absolute; top: 0; left: 0; right: 0; height: var(--bar); box-sizing: border-box;
-           display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid var(--line);
-           background: #fff; z-index: 10; overflow-x: auto; white-space: nowrap; }
+           border-bottom: 1px solid var(--line); background: #fff; z-index: 10; }
+    #bar .row { height: 42px; display: flex; align-items: center; gap: 8px; padding: 0 12px;
+                overflow-x: auto; white-space: nowrap; }
+    #bar .row.top { justify-content: center; }
+    #bar .seg.big button { height: 30px; padding: 0 22px; font-size: 12px; }
     #bar button, #bar select { font: inherit; color: #000; background: #fff; border: 1px solid #ccc;
            border-radius: 4px; height: 26px; padding: 0 10px; cursor: pointer; }
     #bar button:hover, #bar select:hover { background: var(--soft); }
@@ -55,13 +58,12 @@
 </head>
 <body>
   <header id="bar">
-    <div class="seg" id="modeSeg">
-      <button data-mode="2d">2D</button><button data-mode="3d">3D</button>
+    <div class="row top">
+      <div class="seg big" id="modeSeg" title="Loads the best setup for each mode">
+        <button data-mode="2d">2D</button><button data-mode="3d">3D</button>
+      </div>
     </div>
-    <div class="seg" id="modelSeg">
-      <button data-model="jones" title="Jones 2010 model">Jones</button><button data-model="growth" title="Our growth extension (not from Jones)">Growth</button>
-    </div>
-    <span class="sep"></span>
+    <div class="row">
     <button id="playBtn">Pause</button>
     <button id="stepBtn">Step</button>
     <button id="resetBtn" title="Restart with the same seed and food">Reset</button>
@@ -73,6 +75,7 @@
     <select id="exampleSel"></select>
     <span class="grow"></span>
     <button id="paramsBtn">Parameters</button>
+    </div>
   </header>
   <div id="view"></div>
   <div id="stats"></div>
