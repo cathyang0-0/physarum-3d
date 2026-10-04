@@ -144,7 +144,8 @@ export class View {
 
   // Copy simulation state into GPU buffers. Called once per frame.
   update(sim, p) {
-    const scale = p.displayScale > 0 ? p.displayScale : autoScale(sim.trail.data);
+    this.updateFoodZone(sim, p);
+    const scale = p.displayScale > 0 ? p.displayScale : autoScale(sim.trail.data, this.foodZone);
     const data = sim.trail.data;
 
     this.trailObj.visible = p.showTrail;
@@ -191,6 +192,27 @@ export class View {
       this.placePlane.material.opacity = 0.03 + 0.12 * this.planeFlash;
     }
     this.updateFood(sim, p);
+  }
+
+  // Cells near food (within foodRadius + 3). Excluded from the auto display scale, because food
+  // adds far more attractant than the network and would otherwise wash the network out.
+  updateFoodZone(sim, p) {
+    const key = JSON.stringify([sim.sources.map((s) => [s.x, s.y, s.z]), p.foodRadius, sim.trail.size]);
+    if (key === this.foodZoneKey) return;
+    this.foodZoneKey = key;
+    const { nx, ny, nz, size } = sim.trail;
+    const zone = (this.foodZone = new Uint8Array(size));
+    const R = p.foodRadius + 3, Rc = Math.ceil(R), wrap = p.boundary === 'wrap';
+    for (const s of sim.sources) {
+      const cx = Math.floor(s.x), cy = Math.floor(s.y), cz = Math.floor(s.z), zr = nz > 1 ? Rc : 0;
+      for (let dz = -zr; dz <= zr; dz++)
+        for (let dy = -Rc; dy <= Rc; dy++)
+          for (let dx = -Rc; dx <= Rc; dx++) {
+            if (dx * dx + dy * dy + dz * dz > R * R) continue;
+            const i = sim.trail.cellOf(cx + dx + 0.5, cy + dy + 0.5, cz + dz + 0.5, wrap);
+            if (i >= 0) zone[i] = 1;
+          }
+    }
   }
 
   updateFood(sim, p) {
@@ -242,10 +264,14 @@ export class View {
   }
 }
 
-// Display scale when displayScale = 0 ("auto"): 3 × the mean trail value.
-// Display only — it never feeds back into the model.
-function autoScale(data) {
-  let sum = 0;
-  for (let i = 0; i < data.length; i++) sum += data[i];
-  return 3 * (sum / data.length) || 1;
+// Display scale when displayScale = 0 ("auto"): 3 × the mean trail value of the cells away from
+// food. Display only — it never feeds back into the model.
+function autoScale(data, zone) {
+  let sum = 0, n = 0;
+  for (let i = 0; i < data.length; i++) {
+    if (zone && zone[i]) continue;
+    sum += data[i];
+    n++;
+  }
+  return 3 * (sum / Math.max(1, n)) || 1;
 }

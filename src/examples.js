@@ -18,11 +18,12 @@ export const EXAMPLES = {
   },
 
   // The same rules in 3D (our extension: cone sensors, 64³). SO scaled down for the smaller grid,
-  // %p ≈3 (8 000 agents). Tuned: SO 4, agent count, food strength / radius.
+  // %p ≈3 (8 000 agents). Tuned: SO 4, agent count, food strength / radius. Food strength 5 (not
+  // 20): with many food sources, strong food pulls most agents into halos around the food.
   '3D · organic network (Jones rules in 3D)': {
     mode: '3d',
     over: { agentCount: 8000, sensorAngle: 22.5, rotationAngle: 45, sensorOffset: 4, collision: true,
-            diffuse: 1, boundary: 'wrap', foodWeight: 0, foodStrength: 20, foodRadius: 2, ticksPerFrame: 4 },
+            diffuse: 1, boundary: 'wrap', foodWeight: 0, foodStrength: 5, foodRadius: 2, ticksPerFrame: 4 },
     food: 8,
   },
 
