@@ -26,7 +26,7 @@ export function stepAgents2D(sim) {
   };
   const n = sim.agentCount;
 
-  if (p.collision) {
+  if (sim.collision) {
     // Jones-faithful: agents are processed one at a time in a fresh random order each tick
     // ("iteration of the particle population is performed randomly"), so each agent sees the
     // occupancy and trail left by the agents processed before it.

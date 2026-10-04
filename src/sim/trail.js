@@ -38,22 +38,35 @@ export class TrailGrid {
   }
 
   // Diffusion + decay, one tick:
-  //   trail = mean(3x3[x3] neighbourhood) * (1 - decay)
+  //   trail = lerp(trail, mean(3x3[x3] neighbourhood), diffuse) * (1 - decay)
+  // diffuse = 1 is Jones's full mean filter; diffuse < 1 is a partial blur (tuned, not from
+  // source) that keeps structures thinner on a coarse grid.
   // The box mean is separable, so it is done as one 3-tap pass per axis (cheaper than 27 taps).
-  // At a non-wrapping edge the mean is taken over in-bounds neighbours only, so no
-  // chemoattractant leaks out of the domain through the filter.
-  diffuseDecay(decay, wrap) {
+  // At a non-wrapping edge: 'bounce' takes the mean over in-bounds neighbours only (nothing
+  // leaks out); 'absorb' counts outside cells as 0, so attractant drains out through the walls
+  // (keeps networks from sticking to the walls).
+  diffuseDecay(decay, boundary, diffuse = 1) {
+    const wrap = boundary === 'wrap', leak = boundary === 'absorb';
+    if (diffuse < 1) {
+      this.orig ??= new Float32Array(this.size);
+      this.orig.set(this.data);
+    }
     const scale = 1 - decay;
     const axes = [0, 1, 2].filter((a) => [this.nx, this.ny, this.nz][a] > 1);
     let src = this.data, dst = this.tmp;
     axes.forEach((axis, k) => {
       const s = k === axes.length - 1 ? scale : 1; // apply decay once, on the last pass
-      boxPass(src, dst, this.nx, this.ny, this.nz, axis, wrap, s);
+      boxPass(src, dst, this.nx, this.ny, this.nz, axis, wrap, leak, s);
       [src, dst] = [dst, src];
     });
     // After the passes, `src` holds the result; keep `data` pointing at it.
     this.tmp = this.data === src ? this.tmp : this.data;
     this.data = src;
+    if (diffuse < 1) {
+      // data currently = mean * scale; blend back towards the un-blurred trail
+      const d = this.data, o = this.orig, keep = (1 - diffuse) * scale;
+      for (let i = 0; i < d.length; i++) d[i] = diffuse * d[i] + keep * o[i];
+    }
   }
 
   clear() {
@@ -62,7 +75,7 @@ export class TrailGrid {
 }
 
 // One 3-tap mean along `axis` (0 = x, 1 = y, 2 = z), result multiplied by `scale`.
-function boxPass(src, dst, nx, ny, nz, axis, wrap, scale) {
+function boxPass(src, dst, nx, ny, nz, axis, wrap, leak, scale) {
   const n = axis === 0 ? nx : axis === 1 ? ny : nz;
   const stride = axis === 0 ? 1 : axis === 1 ? nx : nx * ny;
   const wrapJump = (n - 1) * stride;
@@ -76,8 +89,10 @@ function boxPass(src, dst, nx, ny, nz, axis, wrap, scale) {
         let cnt = 1;
         if (c > 0) { sum += src[i - stride]; cnt++; }
         else if (wrap) { sum += src[i + wrapJump]; cnt++; }
+        else if (leak) cnt++; // outside counts as 0
         if (c < n - 1) { sum += src[i + stride]; cnt++; }
         else if (wrap) { sum += src[i - wrapJump]; cnt++; }
+        else if (leak) cnt++;
         dst[i] = (sum / cnt) * scale;
       }
     }

@@ -5,6 +5,7 @@ import { View } from './render/view.js';
 import { buildGUI, refreshGUI } from './ui/gui.js';
 import { defaultsFor, modelSwitch } from './params.js';
 import { makePreset, downloadJSON, pickPresetFile } from './ui/presets.js';
+import { EXAMPLES } from './examples.js';
 
 const params = defaultsFor('2d');
 const sim = new Simulation(params);
@@ -60,6 +61,17 @@ const app = {
       }
     },
     loadDefaults: () => app.setMode(params.mode),
+    example: Object.keys(EXAMPLES)[0],
+    loadExample: (name) => {
+      const ex = EXAMPLES[name];
+      Object.assign(params, defaultsFor(ex.mode), { running: true });
+      if (ex.model === 'growth') { app.setModel('growth'); return; }
+      Object.assign(params, ex.over);
+      sim.clearSources();
+      sim.reset(); // re-seed the food rng
+      sim.scatterSources(ex.food);
+      app.reset();
+    },
     inoculate: () => {
       sim.clearSources();
       sim.reset(); // re-seeds the food rng, so the scattered food is the same for a given seed
@@ -103,7 +115,7 @@ function frame() {
   stats.textContent =
     `mode ${params.mode}   model ${params.model}   grid ${nx}×${ny}×${nz}   agents ${sim.agentCount}\n` +
     `tick ${sim.tick}   ${msPerTick.toFixed(1)} ms/tick   ${fps.toFixed(0)} fps\n` +
-    `collision ${params.collision ? 'on (Jones)' : 'off (Jenson)'}   food ${sim.sources.length}   seed ${params.seed}`;
+    `collision ${sim.collision ? 'on (Jones)' : 'off (Jenson)'}   food ${sim.sources.length}   seed ${params.seed}`;
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

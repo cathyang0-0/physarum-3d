@@ -4,6 +4,7 @@
 
 import GUI from 'lil-gui';
 import { STRUCTURAL } from '../params.js';
+import { EXAMPLES } from '../examples.js';
 
 // `app` provides: params, sim, reset(), setMode(mode), actions {...}
 export function buildGUI(app) {
@@ -31,7 +32,7 @@ export function buildGUI(app) {
   app.agentCountController = add(setup, 'agentCount', 100, 500000, 100).name('agents (Jones)');
   add(setup, 'seed', 0, 99999, 1);
   setup.add(app.actions, 'randomSeed').name('random seed');
-  add(setup, 'collision').name('collision (Jones)');
+  app.collisionController = add(setup, 'collision').name('collision (Jones)');
   add(setup, 'spawnAt', ['uniform', 'center', 'food']).name('spawn at');
   add(setup, 'spawnRadius', 1, 64, 1).name('spawn radius');
 
@@ -42,8 +43,9 @@ export function buildGUI(app) {
   add(model, 'stepSize', 0.1, 4, 0.1).name('step size');
   add(model, 'deposit', 0, 50, 0.1).name('deposit');
   add(model, 'decay', 0, 1, 0.005).name('decay (1 − damping)');
+  add(model, 'diffuse', 0, 1, 0.01).name('diffuse (1 = Jones)');
   add(model, 'bothSidesBetter', ['towardLarger', 'random']).name('F < all sides');
-  add(model, 'boundary', ['wrap', 'bounce']).name('boundary');
+  add(model, 'boundary', ['wrap', 'bounce', 'absorb']).name('boundary');
   add(model, 'randomTurnProb', 0, 1, 0.01).name('random turn prob.');
   app.sensorCountController = add(model, 'sensorCount', 2, 16, 1).name('3D: cone sensors');
   app.steeringController = add(model, 'steering', ['argmax', 'weighted']).name('3D: steering');
@@ -52,8 +54,6 @@ export function buildGUI(app) {
   const growth = (app.growthFolder = gui.addFolder('Growth (model = growth)'));
   add(growth, 'initialAgents', 1, 5000, 1).name('initial agents');
   add(growth, 'maxAgents', 100, 200000, 100).name('max agents');
-  add(growth, 'foodWeight', 0, 10, 0.05).name('food smell weight');
-  add(growth, 'foodReach', 1, 200, 1).name('food smell reach');
   add(growth, 'hungerSensing').name('only hungry smell food');
   add(growth, 'energyCost', 0, 0.02, 0.0005).name('energy cost / tick');
   add(growth, 'divideProb', 0, 0.2, 0.005).name('divide prob. / tick');
@@ -65,6 +65,9 @@ export function buildGUI(app) {
   food.add(p, 'foodStrength', 0, 200, 0.5).name('strength / tick')
     .onChange((v) => app.sim.sources.forEach((s) => (s.strength = v)));
   food.add(p, 'foodRadius', 0, 8, 0.5).name('radius');
+  // Long-range food smell (not in Jones; 0 = off): sensors read trail + weight · Σ e^(−d/reach)
+  food.add(p, 'foodWeight', 0, 10, 0.05).name('smell weight (0 = off)');
+  food.add(p, 'foodReach', 1, 200, 1).name('smell reach');
   app.planeController = food.add(p, 'foodPlaneZ', 0, 256, 1).name('3D: plane depth z');
   food.add(p, 'scatterCount', 1, 50, 1).name('scatter N');
   food.add(app.actions, 'scatterFood').name('scatter N random food');
@@ -80,6 +83,8 @@ export function buildGUI(app) {
   render.add(app.actions, 'screenshot').name('save screenshot');
 
   const presets = gui.addFolder('Presets');
+  presets.add(app.actions, 'example', Object.keys(EXAMPLES)).name('examples')
+    .onChange((name) => app.actions.loadExample(name));
   presets.add(app.actions, 'savePreset').name('save preset (.json)');
   presets.add(app.actions, 'loadPreset').name('load preset…');
   presets.add(app.actions, 'loadDefaults').name('defaults for this mode');
@@ -96,5 +101,6 @@ export function refreshGUI(app) {
   const growth = app.params.model === 'growth';
   app.growthFolder.controllersRecursive().forEach((c) => c.enable(growth));
   app.agentCountController.enable(!growth);
+  app.collisionController.enable(!growth); // growth always uses collision
   app.planeController.max(Math.max(1, app.params.gridZ - 1));
 }

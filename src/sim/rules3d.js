@@ -38,7 +38,7 @@ export function stepAgents3D(sim) {
   };
   const n = sim.agentCount;
 
-  if (p.collision) {
+  if (sim.collision) {
     const order = sim.shuffledOrder();
     for (let k = 0; k < n; k++) {
       const i = order[k];

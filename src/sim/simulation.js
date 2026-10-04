@@ -39,7 +39,10 @@ export class Simulation {
     this.tick = 0;
 
     // With one-agent-per-cell, the population cannot exceed the cell count.
-    const maxAgents = p.collision ? Math.floor(this.trail.size * 0.9) : Infinity;
+    // Growth needs one-agent-per-cell: crowding is what pushes the colony outwards, and without
+    // it divided agents pile up in one spot. So collision is always on in the growth model.
+    this.collision = p.collision || this.isGrowth;
+    const maxAgents = this.collision ? Math.floor(this.trail.size * 0.9) : Infinity;
     const clamp = (v) => Math.max(1, Math.min(v | 0, maxAgents));
     // Jones: fixed population. Growth: start small, arrays sized for the maximum population.
     this.capacity = clamp(this.isGrowth ? p.maxAgents : p.agentCount);
@@ -55,12 +58,13 @@ export class Simulation {
     this.hz = new Float32Array(n);
     this.phase = new Float32Array(n);          // 3D: per-agent roll of the sensor cone
     this.order = new Uint32Array(n).map((_, i) => i);
-    this.occupancy = p.collision ? new Uint8Array(this.trail.size) : null;
+    this.occupancy = this.collision ? new Uint8Array(this.trail.size) : null;
 
     // Growth model state
     this.energy = this.isGrowth ? new Float32Array(n).fill(1) : null;
-    this.foodField = this.isGrowth ? new Float32Array(this.trail.size) : null;
-    this.foodMask = this.isGrowth ? new Uint8Array(this.trail.size) : null;
+    // Long-range food smell — used by both models when foodWeight > 0 (growth.js).
+    this.foodField = new Float32Array(this.trail.size);
+    this.foodMask = new Uint8Array(this.trail.size);
     this.foodKey = null;
 
     for (let i = 0; i < this.agentCount; i++) this.spawnAgent(i);
@@ -117,20 +121,21 @@ export class Simulation {
   }
 
   step() {
-    if (this.isGrowth) updateFoodField(this);
+    if (this.params.foodWeight > 0) updateFoodField(this);
     if (this.is2D) stepAgents2D(this);
     else stepAgents3D(this);
     if (this.isGrowth) lifeCycle(this);
     else this.applySources(); // growth model: food attracts through foodField instead
-    this.trail.diffuseDecay(this.params.decay, this.params.boundary === 'wrap');
+    this.trail.diffuseDecay(this.params.decay, this.params.boundary, this.params.diffuse);
     this.tick++;
   }
 
-  // What a sensor reads at a point. Jones: the trail. Growth: trail + fw · foodField,
+  // What a sensor reads at a point: trail + fw · foodField (just the trail if foodWeight = 0 —
+  // pure Jones, where food only stamps attractant into the trail),
   // where fw is the agent's food weight (see makeFoodWeight).
   makeSampler() {
     const t = this.trail, wrap = this.params.boundary === 'wrap', food = this.foodField;
-    if (!this.isGrowth || this.params.foodWeight === 0) return (x, y, z) => t.sample(x, y, z, wrap);
+    if (this.params.foodWeight === 0 || this.sources.length === 0) return (x, y, z) => t.sample(x, y, z, wrap);
     return (x, y, z, fw) => {
       const i = t.cellOf(x, y, z, wrap);
       return i < 0 ? 0 : t.data[i] + fw * food[i];

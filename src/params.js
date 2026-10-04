@@ -11,6 +11,7 @@ const MODEL_FROM_SOURCE = {
   stepSize: 1,         // cells per tick — arXiv:1511.07654 §3
   deposit: 5,          // units per successful move — arXiv:1511.07654 §3
   decay: 0.1,          // "damping" — arXiv:1511.07654 §3 (2012 paper: 0.07); see NOTES.md
+  diffuse: 1,          // 1 = full 3×3 mean (Jones); < 1 = partial blur, tuned, not from source
   bothSidesBetter: 'towardLarger', // arXiv:1212.0023 Fig. 1b
 };
 
@@ -33,7 +34,7 @@ export const DEFAULTS_2D = {
   // growth model only — all tuned, not from source (see NOTES.md "Growth model")
   initialAgents: 300,    // agents at the inoculation site at t = 0
   maxAgents: 12000,      // population cap (array size)
-  foodWeight: 1,         // 0 = off. sensing reads trail + foodWeight · foodField
+  foodWeight: 0,         // 0 = off (pure Jones). sensing reads trail + foodWeight · foodField
   foodReach: 30,         // cells; length scale of the food smell exp(−d / reach)
   hungerSensing: true,   // food smell weighted by (1 − energy): fed agents ignore food
   energyCost: 0.001,     // 0 = off (immortal). energy lost per tick; 1 / cost = ticks of life without food
@@ -65,12 +66,12 @@ export const DEFAULTS_3D = {
 // values — with the 2D values, food spheres in 3D overlap into one blob. All tuned.
 const MODEL_SWITCH = {
   '2d': {
-    jones: { spawnAt: 'uniform', spawnRadius: 12, foodRadius: 2 },
-    growth: { spawnAt: 'center', spawnRadius: 6, collision: true, foodRadius: 8, foodReach: 30 },
+    jones: { spawnAt: 'uniform', spawnRadius: 12, foodRadius: 2, foodWeight: 0 },
+    growth: { spawnAt: 'center', spawnRadius: 6, collision: true, foodRadius: 8, foodReach: 30, foodWeight: 1 },
   },
   '3d': {
-    jones: { spawnAt: 'uniform', spawnRadius: 12, foodRadius: 2 },
-    growth: { spawnAt: 'center', spawnRadius: 3, collision: true, foodRadius: 3, foodReach: 10 },
+    jones: { spawnAt: 'uniform', spawnRadius: 12, foodRadius: 2, foodWeight: 0 },
+    growth: { spawnAt: 'center', spawnRadius: 3, collision: true, foodRadius: 3, foodReach: 10, foodWeight: 1 },
   },
 };
 
