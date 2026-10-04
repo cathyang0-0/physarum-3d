@@ -91,7 +91,7 @@ export class View {
 
     // Agents
     const ag = new THREE.BufferGeometry();
-    ag.setAttribute('position', new THREE.BufferAttribute(new Float32Array(sim.agentCount * 3), 3).setUsage(THREE.DynamicDrawUsage));
+    ag.setAttribute('position', new THREE.BufferAttribute(new Float32Array(sim.capacity * 3), 3).setUsage(THREE.DynamicDrawUsage));
     this.agentsObj = new THREE.Points(ag, new THREE.PointsMaterial({ size: 0.6, color: INK, transparent: true, opacity: 0.5, depthWrite: false }));
     this.agentsObj.frustumCulled = false;
     this.root.add(this.agentsObj);
@@ -152,6 +152,7 @@ export class View {
         a[3 * i] = sim.px[i]; a[3 * i + 1] = sim.py[i]; a[3 * i + 2] = this.is2D ? 0.6 : sim.pz[i];
       }
       this.agentsObj.geometry.attributes.position.needsUpdate = true;
+      this.agentsObj.geometry.setDrawRange(0, sim.agentCount); // growth: population changes
       this.agentsObj.material.size = (this.is2D ? 1 : 0.5) * this.root.scale.x * 2;
     }
 
@@ -165,9 +166,10 @@ export class View {
     this.foodKey = key;
     this.foodGroup.traverse((o) => { o.geometry?.dispose(); o.material?.dispose(); });
     this.foodGroup.clear();
-    // Food = a thin black ring (2D) or a small solid black sphere (3D).
+    // Food = a thin black ring showing the eating radius (2D), or a small fixed-size black
+    // sphere (3D; a sphere of the full radius would hide the network).
     const r = Math.max(1.5, p.foodRadius);
-    const geo = this.is2D ? new THREE.RingGeometry(r, r + 0.8, 32) : new THREE.SphereGeometry(r * 0.6, 16, 12);
+    const geo = this.is2D ? new THREE.RingGeometry(r, r + 0.8, 32) : new THREE.SphereGeometry(1.2, 16, 12);
     const mat = new THREE.MeshBasicMaterial({ color: INK });
     for (const s of sim.sources) {
       const m = new THREE.Mesh(geo, mat);

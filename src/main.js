@@ -3,7 +3,7 @@
 import { Simulation } from './sim/simulation.js';
 import { View } from './render/view.js';
 import { buildGUI, refreshGUI } from './ui/gui.js';
-import { defaultsFor } from './params.js';
+import { defaultsFor, MODEL_SWITCH } from './params.js';
 import { makePreset, downloadJSON, pickPresetFile } from './ui/presets.js';
 
 const params = defaultsFor('2d');
@@ -19,12 +19,19 @@ const app = {
     view.rebuild(sim);
     if (app.gui) refreshGUI(app);
   },
-  // Switching mode loads that mode's default preset (each mode's defaults are a coherent set).
+  // Switching mode loads that mode's default preset (each mode's defaults are a coherent set),
+  // keeping the current model.
   setMode(mode) {
+    const model = params.model;
     Object.assign(params, defaultsFor(mode), { running: params.running });
-    sim.clearSources();
-    app.reset();
-    refreshGUI(app);
+    app.setModel(model);
+  },
+  // Switching model applies its spawn settings. Growth starts from an inoculum on a food source
+  // in the centre, plus N scattered food sources.
+  setModel(model) {
+    Object.assign(params, MODEL_SWITCH[model], { model });
+    if (model === 'growth') app.actions.inoculate();
+    else { sim.clearSources(); app.reset(); }
   },
   actions: {
     stepOnce: () => { sim.step(); },
@@ -53,6 +60,14 @@ const app = {
       }
     },
     loadDefaults: () => app.setMode(params.mode),
+    inoculate: () => {
+      sim.clearSources();
+      sim.reset(); // re-seeds the food rng, so the scattered food is the same for a given seed
+      const t = sim.trail;
+      sim.addSource({ x: t.nx / 2, y: t.ny / 2, z: t.nz / 2 });
+      sim.scatterSources(params.scatterCount);
+      app.reset();
+    },
   },
 };
 app.gui = buildGUI(app);
@@ -86,7 +101,7 @@ function frame() {
   last = now;
   const { nx, ny, nz } = sim.trail;
   stats.textContent =
-    `mode ${params.mode}   grid ${nx}×${ny}×${nz}   agents ${sim.agentCount}\n` +
+    `mode ${params.mode}   model ${params.model}   grid ${nx}×${ny}×${nz}   agents ${sim.agentCount}\n` +
     `tick ${sim.tick}   ${msPerTick.toFixed(1)} ms/tick   ${fps.toFixed(0)} fps\n` +
     `collision ${params.collision ? 'on (Jones)' : 'off (Jenson)'}   food ${sim.sources.length}   seed ${params.seed}`;
   requestAnimationFrame(frame);

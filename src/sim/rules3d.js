@@ -6,7 +6,6 @@
 //     the heading and that sensor's direction
 // With N = 2 cone sensors lying in one plane, this reduces exactly to the 2D rule.
 
-import { shuffle } from './rng.js';
 import { wrapCoord } from './rules2d.js';
 
 const DEG = Math.PI / 180;
@@ -29,7 +28,9 @@ export function stepAgents3D(sim) {
     sinRA: Math.sin(p.rotationAngle * DEG),
     SO: p.sensorOffset,
     step: p.stepSize,
-    deposit: p.deposit,
+    sample: sim.makeSampler(),
+    foodWeightOf: sim.makeFoodWeight(),
+    depositOf: sim.makeDepositor(),
     N: Math.min(MAX_SENSORS, Math.max(2, p.sensorCount | 0)),
     randomBranch: p.bothSidesBetter === 'random',
     weighted: p.steering === 'weighted',
@@ -38,9 +39,9 @@ export function stepAgents3D(sim) {
   const n = sim.agentCount;
 
   if (p.collision) {
-    shuffle(sim.order, sim.rand);
+    const order = sim.shuffledOrder();
     for (let k = 0; k < n; k++) {
-      const i = sim.order[k];
+      const i = order[k];
       senseRotate(ctx, i);
       move(ctx, i);
     }
@@ -51,7 +52,7 @@ export function stepAgents3D(sim) {
 }
 
 function senseRotate(ctx, i) {
-  const { sim, trail, rand, wrap, cosSA, sinSA, SO, N } = ctx;
+  const { sim, sample, rand, cosSA, sinSA, SO, N } = ctx;
   const x = sim.px[i], y = sim.py[i], z = sim.pz[i];
   const hx = sim.hx[i], hy = sim.hy[i], hz = sim.hz[i];
 
@@ -67,7 +68,8 @@ function senseRotate(ctx, i) {
   // v = h × u
   const vx = hy * uz - hz * uy, vy = hz * ux - hx * uz, vz = hx * uy - hy * ux;
 
-  const F = trail.sample(x + SO * hx, y + SO * hy, z + SO * hz, wrap);
+  const fw = ctx.foodWeightOf(i); // growth model only; ignored by the Jones sampler
+  const F = sample(x + SO * hx, y + SO * hy, z + SO * hz, fw);
 
   let maxC = -Infinity, minC = Infinity, argmax = -1, nMax = 0;
   const phase = sim.phase[i];
@@ -77,11 +79,11 @@ function senseRotate(ctx, i) {
     const ex = c * ux + s * vx, ey = c * uy + s * vy, ez = c * uz + s * vz; // lateral unit
     E[3 * k] = ex; E[3 * k + 1] = ey; E[3 * k + 2] = ez;
     // sensor direction d = cos(SA) h + sin(SA) e
-    const val = trail.sample(
+    const val = sample(
       x + SO * (cosSA * hx + sinSA * ex),
       y + SO * (cosSA * hy + sinSA * ey),
       z + SO * (cosSA * hz + sinSA * ez),
-      wrap,
+      fw,
     );
     C[k] = val;
     if (val > maxC) { maxC = val; argmax = k; nMax = 1; }
@@ -141,7 +143,7 @@ function weightedLateral(N) {
 }
 
 function move(ctx, i) {
-  const { sim, trail, rand, wrap, step } = ctx;
+  const { sim, trail, wrap, step } = ctx;
   let x = sim.px[i] + step * sim.hx[i];
   let y = sim.py[i] + step * sim.hy[i];
   let z = sim.pz[i] + step * sim.hz[i];
@@ -163,5 +165,5 @@ function move(ctx, i) {
     sim.occupancy[target] = 1;
   }
   sim.px[i] = x; sim.py[i] = y; sim.pz[i] = z;
-  trail.data[target] += ctx.deposit;
+  trail.data[target] += ctx.depositOf(i);
 }

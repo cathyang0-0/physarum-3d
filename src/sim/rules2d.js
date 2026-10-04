@@ -4,7 +4,6 @@
 //
 // Sources: Jones & Adamatzky 2012 (arXiv:1212.0023) Fig. 1b pseudocode; see SPEC.md §1.
 
-import { shuffle } from './rng.js';
 
 const DEG = Math.PI / 180;
 
@@ -19,7 +18,9 @@ export function stepAgents2D(sim) {
     RA: p.rotationAngle * DEG,
     SO: p.sensorOffset,
     step: p.stepSize,
-    deposit: p.deposit,
+    sample: sim.makeSampler(),
+    foodWeightOf: sim.makeFoodWeight(),
+    depositOf: sim.makeDepositor(),
     randomBranch: p.bothSidesBetter === 'random',
     randomTurnProb: p.randomTurnProb,
   };
@@ -29,9 +30,9 @@ export function stepAgents2D(sim) {
     // Jones-faithful: agents are processed one at a time in a fresh random order each tick
     // ("iteration of the particle population is performed randomly"), so each agent sees the
     // occupancy and trail left by the agents processed before it.
-    shuffle(sim.order, sim.rand);
+    const order = sim.shuffledOrder();
     for (let k = 0; k < n; k++) {
-      const i = sim.order[k];
+      const i = order[k];
       senseRotate(ctx, i);
       move(ctx, i);
     }
@@ -45,13 +46,14 @@ export function stepAgents2D(sim) {
 
 // Sensory stage: sample F, FL, FR at distance SO and angles 0, +SA, -SA; rotate by RA.
 function senseRotate(ctx, i) {
-  const { sim, trail, rand, wrap, SA, RA, SO } = ctx;
+  const { sim, sample, rand, SA, RA, SO } = ctx;
   const x = sim.px[i], y = sim.py[i], z = sim.pz[i];
   const a = sim.heading[i];
+  const fw = ctx.foodWeightOf(i); // growth model only; ignored by the Jones sampler
 
-  const F = trail.sample(x + SO * Math.cos(a), y + SO * Math.sin(a), z, wrap);
-  const FL = trail.sample(x + SO * Math.cos(a + SA), y + SO * Math.sin(a + SA), z, wrap);
-  const FR = trail.sample(x + SO * Math.cos(a - SA), y + SO * Math.sin(a - SA), z, wrap);
+  const F = sample(x + SO * Math.cos(a), y + SO * Math.sin(a), z, fw);
+  const FL = sample(x + SO * Math.cos(a + SA), y + SO * Math.sin(a + SA), z, fw);
+  const FR = sample(x + SO * Math.cos(a - SA), y + SO * Math.sin(a - SA), z, fw);
 
   const randomSide = () => (rand() < 0.5 ? RA : -RA);
   let turn = 0;
@@ -105,7 +107,7 @@ function move(ctx, i) {
   }
   sim.px[i] = x;
   sim.py[i] = y;
-  trail.data[target] += ctx.deposit;
+  trail.data[target] += ctx.depositOf(i);
 }
 
 export function wrapCoord(v, n) {

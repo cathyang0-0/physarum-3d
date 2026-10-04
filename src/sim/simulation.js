@@ -3,12 +3,16 @@
 //
 // One tick:
 //   1. agents: sense → rotate → move → deposit   (rules2d.js / rules3d.js)
-//   2. food sources add attractant to the trail
-//   3. trail = mean3x3[x3](trail) * (1 - decay)
+//   2. food sources add attractant to the trail   (Jones model only)
+//   3. energy, death, division                     (growth model only, growth.js)
+//   4. trail = mean3x3[x3](trail) * (1 - decay)
+//
+// params.model: 'jones' = the source model; 'growth' = our Physarum-like extension (NOTES.md).
 
-import { mulberry32 } from './rng.js';
+import { mulberry32, shuffle } from './rng.js';
+import { updateFoodField, lifeCycle } from './growth.js';
 import { TrailGrid } from './trail.js';
-import { stepAgents2D } from './rules2d.js';
+import { stepAgents2D, wrapCoord } from './rules2d.js';
 import { stepAgents3D } from './rules3d.js';
 
 export class Simulation {
@@ -22,6 +26,10 @@ export class Simulation {
     return this.params.mode === '2d';
   }
 
+  get isGrowth() {
+    return this.params.model === 'growth';
+  }
+
   reset() {
     const p = this.params;
     const nx = p.gridX | 0, ny = p.gridY | 0, nz = this.is2D ? 1 : p.gridZ | 0;
@@ -32,7 +40,11 @@ export class Simulation {
 
     // With one-agent-per-cell, the population cannot exceed the cell count.
     const maxAgents = p.collision ? Math.floor(this.trail.size * 0.9) : Infinity;
-    const n = (this.agentCount = Math.max(1, Math.min(p.agentCount | 0, maxAgents)));
+    const clamp = (v) => Math.max(1, Math.min(v | 0, maxAgents));
+    // Jones: fixed population. Growth: start small, arrays sized for the maximum population.
+    this.capacity = clamp(this.isGrowth ? p.maxAgents : p.agentCount);
+    this.agentCount = this.isGrowth ? Math.min(clamp(p.initialAgents), this.capacity) : this.capacity;
+    const n = this.capacity;
 
     this.px = new Float32Array(n);
     this.py = new Float32Array(n);
@@ -45,13 +57,20 @@ export class Simulation {
     this.order = new Uint32Array(n).map((_, i) => i);
     this.occupancy = p.collision ? new Uint8Array(this.trail.size) : null;
 
-    for (let i = 0; i < n; i++) this.spawnAgent(i);
+    // Growth model state
+    this.energy = this.isGrowth ? new Float32Array(n).fill(1) : null;
+    this.foodField = this.isGrowth ? new Float32Array(this.trail.size) : null;
+    this.foodMask = this.isGrowth ? new Uint8Array(this.trail.size) : null;
+    this.foodKey = null;
+
+    for (let i = 0; i < this.agentCount; i++) this.spawnAgent(i);
   }
 
   // Place agent i at a random position (uniform, or around a food source) with a random heading.
   spawnAgent(i) {
     const p = this.params, t = this.trail, r = this.rand;
     const aroundFood = p.spawnAt === 'food' && this.sources.length > 0;
+    const aroundCenter = p.spawnAt === 'center';
     // Around food first; if the balls around the food are full (collision on), the remaining
     // agents fall back to uniform placement instead of failing.
     for (let attempt = 0; attempt < 2000; attempt++) {
@@ -60,6 +79,9 @@ export class Simulation {
         const s = this.sources[Math.floor(r() * this.sources.length)];
         const [dx, dy, dz] = this.randomInBall(p.spawnRadius);
         x = s.x + dx; y = s.y + dy; z = this.is2D ? 0.5 : s.z + dz;
+      } else if (aroundCenter && attempt < 1000) {
+        const [dx, dy, dz] = this.randomInBall(p.spawnRadius);
+        x = t.nx / 2 + dx; y = t.ny / 2 + dy; z = this.is2D ? 0.5 : t.nz / 2 + dz;
       } else {
         x = r() * t.nx; y = r() * t.ny; z = this.is2D ? 0.5 : r() * t.nz;
       }
@@ -95,11 +117,88 @@ export class Simulation {
   }
 
   step() {
+    if (this.isGrowth) updateFoodField(this);
     if (this.is2D) stepAgents2D(this);
     else stepAgents3D(this);
-    this.applySources();
+    if (this.isGrowth) lifeCycle(this);
+    else this.applySources(); // growth model: food attracts through foodField instead
     this.trail.diffuseDecay(this.params.decay, this.params.boundary === 'wrap');
     this.tick++;
+  }
+
+  // What a sensor reads at a point. Jones: the trail. Growth: trail + fw · foodField,
+  // where fw is the agent's food weight (see makeFoodWeight).
+  makeSampler() {
+    const t = this.trail, wrap = this.params.boundary === 'wrap', food = this.foodField;
+    if (!this.isGrowth || this.params.foodWeight === 0) return (x, y, z) => t.sample(x, y, z, wrap);
+    return (x, y, z, fw) => {
+      const i = t.cellOf(x, y, z, wrap);
+      return i < 0 ? 0 : t.data[i] + fw * food[i];
+    };
+  }
+
+  // How strongly agent i is drawn to the food smell. With hungerSensing, a full agent (energy 1)
+  // ignores food and a starving one (energy 0) feels it at full foodWeight.
+  makeFoodWeight() {
+    const w = this.params.foodWeight, E = this.energy;
+    if (!this.isGrowth || !this.params.hungerSensing) return () => w;
+    return (i) => w * (1 - E[i]);
+  }
+
+  // How much agent i deposits on a successful move. Growth: more energy → stronger trail.
+  makeDepositor() {
+    const d = this.params.deposit, boost = this.params.fedDepositBoost, E = this.energy;
+    if (!this.isGrowth || boost === 0) return () => d;
+    return (i) => d * (1 + boost * E[i]);
+  }
+
+  // Random processing order over the current population (collision mode).
+  shuffledOrder() {
+    const n = this.agentCount;
+    if (this.isGrowth) for (let k = 0; k < n; k++) this.order[k] = k; // population changes
+    shuffle(this.order, this.rand, n);
+    return this.order;
+  }
+
+  // ---- Population changes (growth model) ---------------------------------------------------
+
+  copyAgent(from, to) {
+    for (const a of [this.px, this.py, this.pz, this.heading, this.hx, this.hy, this.hz, this.phase, this.energy]) {
+      if (a) a[to] = a[from];
+    }
+  }
+
+  // Remove agent i by moving the last agent into its slot.
+  removeAgent(i) {
+    if (this.occupancy) {
+      const c = this.trail.cellOf(this.px[i], this.py[i], this.pz[i], this.params.boundary === 'wrap');
+      if (c >= 0) this.occupancy[c] = 0;
+    }
+    const last = this.agentCount - 1;
+    if (i !== last) this.copyAgent(last, i);
+    this.agentCount--;
+  }
+
+  // Put a child of agent `parent` into slot j, one cell away in a random direction.
+  // Returns false if no free in-bounds neighbour cell was found (collision on).
+  placeChild(parent, j) {
+    const t = this.trail, r = this.rand, wrap = this.params.boundary === 'wrap';
+    for (let attempt = 0; attempt < 8; attempt++) {
+      let dx = Math.floor(r() * 3) - 1, dy = Math.floor(r() * 3) - 1;
+      let dz = this.is2D ? 0 : Math.floor(r() * 3) - 1;
+      if (dx === 0 && dy === 0 && dz === 0) continue;
+      let x = this.px[parent] + dx, y = this.py[parent] + dy, z = this.pz[parent] + dz;
+      if (wrap) { x = wrapCoord(x, t.nx); y = wrapCoord(y, t.ny); if (!this.is2D) z = wrapCoord(z, t.nz); }
+      const c = t.cellOf(x, y, z, wrap);
+      if (c < 0 || (this.occupancy && this.occupancy[c])) continue;
+      if (this.occupancy) this.occupancy[c] = 1;
+      this.copyAgent(parent, j);
+      this.px[j] = x; this.py[j] = y; this.pz[j] = z;
+      this.heading[j] = r() * 2 * Math.PI; // child heads off in a random direction
+      this.randomizeHeading3D(j);
+      return true;
+    }
+    return false;
   }
 
   // ---- Food sources ------------------------------------------------------------------------

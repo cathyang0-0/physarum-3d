@@ -15,6 +15,8 @@ export function buildGUI(app) {
 
   // Mode sits at the top so it is easy to find. Switching loads that mode's defaults.
   gui.add(p, 'mode', { '2D sanity (z = 1)': '2d', '3D': '3d' }).name('MODE').onChange((m) => app.setMode(m));
+  gui.add(p, 'model', { 'Jones (source)': 'jones', 'growth (ours)': 'growth' }).name('MODEL')
+    .onChange((m) => app.setModel(m));
 
   const run = gui.addFolder('Run');
   run.add(p, 'running').name('running').listen();
@@ -26,11 +28,11 @@ export function buildGUI(app) {
   add(setup, 'gridX', 16, 512, 1);
   add(setup, 'gridY', 16, 512, 1);
   app.gridZController = add(setup, 'gridZ', 8, 256, 1);
-  add(setup, 'agentCount', 100, 500000, 100).name('agents');
+  app.agentCountController = add(setup, 'agentCount', 100, 500000, 100).name('agents (Jones)');
   add(setup, 'seed', 0, 99999, 1);
   setup.add(app.actions, 'randomSeed').name('random seed');
   add(setup, 'collision').name('collision (Jones)');
-  add(setup, 'spawnAt', ['uniform', 'food']).name('spawn at');
+  add(setup, 'spawnAt', ['uniform', 'center', 'food']).name('spawn at');
   add(setup, 'spawnRadius', 1, 64, 1).name('spawn radius');
 
   const model = gui.addFolder('Model');
@@ -45,6 +47,19 @@ export function buildGUI(app) {
   add(model, 'randomTurnProb', 0, 1, 0.01).name('random turn prob.');
   app.sensorCountController = add(model, 'sensorCount', 2, 16, 1).name('3D: cone sensors');
   app.steeringController = add(model, 'steering', ['argmax', 'weighted']).name('3D: steering');
+
+  // Growth model (ours, not from Jones). Setting a value to 0 switches that rule off.
+  const growth = (app.growthFolder = gui.addFolder('Growth (model = growth)'));
+  add(growth, 'initialAgents', 1, 5000, 1).name('initial agents');
+  add(growth, 'maxAgents', 100, 200000, 100).name('max agents');
+  add(growth, 'foodWeight', 0, 10, 0.05).name('food smell weight');
+  add(growth, 'foodReach', 1, 200, 1).name('food smell reach');
+  add(growth, 'hungerSensing').name('only hungry smell food');
+  add(growth, 'energyCost', 0, 0.02, 0.0005).name('energy cost / tick');
+  add(growth, 'divideProb', 0, 0.2, 0.005).name('divide prob. / tick');
+  add(growth, 'divideMinEnergy', 0, 1, 0.05).name('divide min. energy');
+  add(growth, 'fedDepositBoost', 0, 10, 0.1).name('fed deposit boost');
+  growth.add(app.actions, 'inoculate').name('reset: inoculum + food');
 
   const food = gui.addFolder('Food');
   food.add(p, 'foodStrength', 0, 200, 0.5).name('strength / tick')
@@ -78,5 +93,8 @@ export function refreshGUI(app) {
   const is3D = app.params.mode === '3d';
   [app.gridZController, app.sensorCountController, app.steeringController, app.planeController]
     .forEach((c) => c.enable(is3D));
+  const growth = app.params.model === 'growth';
+  app.growthFolder.controllersRecursive().forEach((c) => c.enable(growth));
+  app.agentCountController.enable(!growth);
   app.planeController.max(Math.max(1, app.params.gridZ - 1));
 }

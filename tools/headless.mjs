@@ -2,7 +2,7 @@
 // 2D: the trail itself. 3D: a maximum-intensity projection along z.
 //
 // Usage:
-//   node tools/headless.mjs --ticks 2000 --out out/run.png [--preset file.json] [--set '{"sensorAngle":45}'] [--every 500]
+//   node tools/headless.mjs --ticks 2000 --out out/run.png [--preset file.json] [--set '{"sensorAngle":45}'] [--every 500] [--food N]
 //
 // Also the building block for the SA × RA parameter study (SPEC §7.6).
 
@@ -31,6 +31,7 @@ const out = args.out ?? 'out/run.png';
 
 const sim = new Simulation(params);
 food.forEach((s) => sim.addSource(s, s.strength, s.type));
+if (args.food) sim.scatterSources(Number(args.food)); // --food N: N random food sources
 if (food.length && params.spawnAt === 'food') sim.reset();
 
 const t0 = performance.now();
@@ -39,7 +40,7 @@ for (let k = 1; k <= ticks; k++) {
   if (k % every === 0) {
     const path = every === ticks ? out : out.replace(/\.png$/, `_t${String(k).padStart(5, '0')}.png`);
     savePNG(path, sim);
-    console.log(`tick ${k}  →  ${path}`);
+    console.log(`tick ${k}  agents ${sim.agentCount}  →  ${path}`);
   }
 }
 const ms = (performance.now() - t0) / ticks;

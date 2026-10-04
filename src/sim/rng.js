@@ -13,9 +13,9 @@ export function mulberry32(seed) {
   };
 }
 
-// In-place Fisher–Yates shuffle of a typed array, using the given rng.
-export function shuffle(arr, rand) {
-  for (let i = arr.length - 1; i > 0; i--) {
+// In-place Fisher–Yates shuffle of the first n entries of a typed array, using the given rng.
+export function shuffle(arr, rand, n = arr.length) {
+  for (let i = n - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));
     const t = arr[i];
     arr[i] = arr[j];
