@@ -55,11 +55,12 @@ export const EXAMPLES = {
     food: 6,
   },
 
-  // Adaptation in 3D: every food gets connected, but the population grows and tube tips keep
-  // extending into the corners. Kept as a comparison, not a solution (NOTES.md).
-  '3D · network + adaptation (all food linked, extra tubes)': {
+  // Adaptation in 3D: every food gets connected. SO 4 (instead of 6) gives more, finer links
+  // (12/12 food linked, NOTES.md "More connections in 3D"); some tips still reach the walls.
+  '3D · network + adaptation (more links)': {
     mode: '3d',
     over: { collision: false, diffuse: 0.1, boundary: 'absorb', wallRepel: true, wallResponse: 'reflect',
+            sensorOffset: 4,
             foodWeight: 0, foodStrength: 500, foodRadius: 2, ticksPerFrame: 2,
             adapt: true, adaptRadius: 2, adaptHigh: 10, adaptLow: 2, adaptDivideMin: 1,
             adaptDivideProb: 0.5, adaptRemoveProb: 0.1, maxAgents: 120000 },
