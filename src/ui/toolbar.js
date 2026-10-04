@@ -1,4 +1,4 @@
-// Top toolbar: the controls used all the time. Everything else lives in the parameter sidebar.
+// The everyday controls: the 2D/3D toggle (top centre) and the control row along the bottom. Everything else lives in the parameter sidebar.
 
 import { EXAMPLES } from '../examples.js';
 
@@ -38,6 +38,7 @@ export function updateToolbar(app) {
   $('playBtn').textContent = p.running ? 'Pause' : 'Play';
   $('planeCtl').style.display = p.mode === '3d' ? '' : 'none';
   $('help3d').style.display = p.mode === '3d' ? '' : 'none';
+  $('helpDrag').textContent = p.mode === '3d' ? 'drag: rotate · right-drag: pan' : 'drag: pan';
   const z = $('planeZ');
   z.max = Math.max(1, p.gridZ - 1);
   z.value = p.foodPlaneZ;

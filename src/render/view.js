@@ -28,6 +28,11 @@ export class View {
     this.camera = new THREE.PerspectiveCamera(40, 1, 0.01, 1000);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.12;   // settles quickly after a drag, no long drift
+    this.controls.rotateSpeed = 0.7;      // calmer than the default 1.0
+    this.controls.screenSpacePanning = true;
+    this.controls.minDistance = 2;
+    this.controls.maxDistance = 80;
 
     this.root = new THREE.Group();
     this.scene.add(this.root);
@@ -114,13 +119,27 @@ export class View {
     this.resetCamera();
   }
 
+  // Mouse mapping. 2D: the sheet stays flat — left-drag pans, no rotation. 3D: left-drag orbits
+  // around the box centre, right-drag pans. Wheel zooms in both.
   resetCamera() {
-    if (this.is2D) this.camera.position.set(0, 0, 18);
-    else this.camera.position.set(15, -18, 12);
-    this.camera.up.set(0, 0, 1);
-    if (this.is2D) this.camera.up.set(0, 1, 0);
-    this.controls.target.set(0, 0, 0);
-    this.controls.update();
+    const c = this.controls;
+    // Drop any leftover rotation/pan momentum (damping) from before the reset.
+    c.enableDamping = false;
+    c.update();
+    c.enableDamping = true;
+    if (this.is2D) {
+      this.camera.position.set(0, 0, 18);
+      this.camera.up.set(0, 1, 0);
+      c.enableRotate = false;
+      c.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+    } else {
+      this.camera.position.set(15, -18, 12);
+      this.camera.up.set(0, 0, 1);
+      c.enableRotate = true;
+      c.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+    }
+    c.target.set(0, 0, 0);
+    c.update();
   }
 
   // Copy simulation state into GPU buffers. Called once per frame.

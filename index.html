@@ -5,34 +5,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Physarum 3D — v0 (CPU reference)</title>
   <style>
-    :root { --bar: 84px; --line: #e5e5e5; --soft: #f2f2f2; --mute: #999; }
+    :root { --bottom: 52px; --line: #e5e5e5; --soft: #f2f2f2; --mute: #999; }
     html, body { margin: 0; height: 100%; background: #fff; color: #000; overflow: hidden;
                  font: 11px/1.5 ui-monospace, Menlo, monospace; }
-    #view { position: absolute; inset: var(--bar) 0 0 0; }
-    #stats { position: absolute; left: 16px; top: calc(var(--bar) + 12px); white-space: pre; pointer-events: none; }
-    #help { position: absolute; left: 16px; bottom: 14px; color: var(--mute); pointer-events: none; }
+    #view { position: absolute; inset: 0; }
+    #stats { position: absolute; left: 16px; top: 14px; white-space: pre; pointer-events: none; }
+    #help { position: absolute; left: 16px; bottom: calc(var(--bottom) + 6px); color: var(--mute); pointer-events: none; }
 
-    /* ---- top toolbar ---- */
-    #bar { position: absolute; top: 0; left: 0; right: 0; height: var(--bar); box-sizing: border-box;
-           border-bottom: 1px solid var(--line); background: #fff; z-index: 10; }
-    #bar .row { height: 42px; display: flex; align-items: center; gap: 8px; padding: 0 12px;
+    button, select { font: inherit; color: #000; background: #fff; border: 1px solid #ccc;
+                     border-radius: 4px; height: 28px; padding: 0 10px; cursor: pointer; }
+    button:hover, select:hover { background: var(--soft); }
+
+    /* ---- 2D / 3D toggle, floating at the top centre ---- */
+    #modeSeg { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: inline-flex; z-index: 10; }
+    #modeSeg button { height: 32px; padding: 0 24px; font-size: 12px; border-radius: 0; margin-left: -1px; }
+    #modeSeg button:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
+    #modeSeg button:last-child { border-radius: 0 4px 4px 0; }
+    #modeSeg button.on { background: #000; color: #fff; border-color: #000; }
+
+    /* ---- controls along the bottom ---- */
+    #controls { position: absolute; left: 0; right: 0; bottom: 0; height: var(--bottom); box-sizing: border-box;
+                display: flex; align-items: center; gap: 8px; padding: 0 16px; z-index: 10;
                 overflow-x: auto; white-space: nowrap; }
-    #bar .row.top { justify-content: center; }
-    #bar .seg.big button { height: 30px; padding: 0 22px; font-size: 12px; }
-    #bar button, #bar select { font: inherit; color: #000; background: #fff; border: 1px solid #ccc;
-           border-radius: 4px; height: 26px; padding: 0 10px; cursor: pointer; }
-    #bar button:hover, #bar select:hover { background: var(--soft); }
-    #bar .seg { display: inline-flex; }
-    #bar .seg button { border-radius: 0; margin-left: -1px; }
-    #bar .seg button:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
-    #bar .seg button:last-child { border-radius: 0 4px 4px 0; }
-    #bar .seg button.on { background: #000; color: #fff; border-color: #000; }
-    #bar .sep { width: 1px; height: 20px; background: var(--line); margin: 0 4px; flex: none; }
-    #bar .grow { flex: 1; }
-    #bar label { display: inline-flex; align-items: center; gap: 6px; color: #444; }
-    #bar input[type=range] { width: 90px; accent-color: #000; }
-    #bar #paramsBtn.on { background: #000; color: #fff; border-color: #000; }
-    #bar #exampleSel { width: 130px; }
+    #controls .gap { width: 12px; flex: none; }
+    #controls .grow { flex: 1; }
+    #controls label { display: inline-flex; align-items: center; gap: 6px; color: #444; }
+    #controls input[type=range] { width: 90px; accent-color: #000; }
+    #controls #exampleSel { width: 140px; }
+    #paramsBtn.on { background: #000; color: #fff; border-color: #000; }
 
     /* ---- parameter sidebar (lil-gui), hidden until "Parameters" is pressed ---- */
     .lil-gui {
@@ -41,7 +41,7 @@
       --focus-color: #ddd; --number-color: #000; --string-color: #000;
       --font-family: ui-monospace, Menlo, monospace; --font-size: 11px;
     }
-    .lil-gui.root { position: absolute; top: var(--bar); right: 0; max-height: calc(100% - var(--bar));
+    .lil-gui.root { position: absolute; top: 0; right: 0; max-height: calc(100% - var(--bottom));
                     overflow-y: auto; border-left: 1px solid var(--line); z-index: 9; }
     .lil-gui.root.hidden { display: none; }
     .lil-gui .title { border-bottom: 1px solid #eee; }
@@ -57,29 +57,25 @@
   </script>
 </head>
 <body>
-  <header id="bar">
-    <div class="row top">
-      <div class="seg big" id="modeSeg" title="Loads the best setup for each mode">
-        <button data-mode="2d">2D</button><button data-mode="3d">3D</button>
-      </div>
-    </div>
-    <div class="row">
+  <div id="modeSeg" title="Loads the best setup for each mode">
+    <button data-mode="2d">2D</button><button data-mode="3d">3D</button>
+  </div>
+  <div id="view"></div>
+  <div id="stats"></div>
+  <div id="help">click: add food · shift-click: remove food · <span id="helpDrag"></span> · wheel: zoom<span id="help3d"> · shift+wheel or ↑/↓: move food plane</span></div>
+  <div id="controls">
     <button id="playBtn">Pause</button>
     <button id="stepBtn">Step</button>
     <button id="resetBtn" title="Restart with the same seed and food">Reset</button>
-    <span class="sep"></span>
+    <span class="gap"></span>
     <button id="foodBtn">+ Random food</button>
     <button id="clearBtn">Clear food</button>
     <label id="planeCtl" title="Depth of the plane where clicks place food (3D)">plane z <input id="planeZ" type="range" min="0" max="63" step="1" /></label>
-    <span class="sep"></span>
+    <span class="gap"></span>
     <select id="exampleSel"></select>
     <span class="grow"></span>
     <button id="paramsBtn">Parameters</button>
-    </div>
-  </header>
-  <div id="view"></div>
-  <div id="stats"></div>
-  <div id="help">click: add food · shift-click: remove food · drag: orbit · right-drag: pan · wheel: zoom<span id="help3d"> · shift+wheel or ↑/↓: move food plane</span></div>
+  </div>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>

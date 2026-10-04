@@ -86,7 +86,7 @@ const app = {
 };
 app.gui = buildGUI(app);
 buildToolbar(app);
-app.setMode('2d'); // start on the main 2D setup
+app.setMode('3d'); // start on the main 3D setup
 
 // ---- Mouse: click = add food, shift-click = remove. A drag (orbit) is not a click. ----------
 // 3D: the food plane moves with Shift + wheel or the ↑ / ↓ keys (or the toolbar slider).
