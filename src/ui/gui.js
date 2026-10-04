@@ -52,6 +52,11 @@ export function buildGUI(app) {
   app.sensorCountController = add(model, 'sensorCount', 2, 16, 1).name('3D: cone sensors');
   app.steeringController = add(model, 'steering', ['argmax', 'weighted']).name('3D: steering');
 
+  // Plasmodial shrinkage (Jones 2010 §4.2): random removal from a dense sheet.
+  const shrink = (app.shrinkFolder = gui.addFolder('Shrinkage (Jones 2010 §4.2)'));
+  shrink.add(p, 'shrinkProb', 0, 0.005, 0.00005).name('removal prob. / agent / tick');
+  shrink.add(p, 'shrinkMinAgents', 1, 100000, 1).name('stop at agents');
+
   // Population adaptation (ours, Jones model only): crowded agents removed, sparse ones divide.
   const adapt = (app.adaptFolder = gui.addFolder('Population adaptation (Jones model)'));
   add(adapt, 'adapt').name('adapt population');

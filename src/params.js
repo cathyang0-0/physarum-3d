@@ -43,6 +43,9 @@ export const DEFAULTS_2D = {
   divideProb: 0.03,      // 0 = off. per-tick chance that a well-fed agent splits
   divideMinEnergy: 0.6,  // only agents with at least this much energy may split
   fedDepositBoost: 1,    // 0 = off. deposit × (1 + boost · energy)
+  // plasmodial shrinkage — Jones 2010 §4.2 (from source: 0.00025 per agent per step, %p 50)
+  shrinkProb: 0,         // 0 = off. per-agent removal probability per tick; removed agents never return
+  shrinkMinAgents: 1,    // stop removing below this (not in source; 1 = no floor)
   // population adaptation (Jones model only) — tuned, not from source (src/sim/adapt.js)
   adapt: false,          // off = fixed population (Jones)
   adaptInterval: 5,      // ticks between checks

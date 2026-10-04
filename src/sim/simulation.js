@@ -129,6 +129,7 @@ export class Simulation {
     if (this.isGrowth) lifeCycle(this);
     else this.applySources(); // growth model: food attracts through foodField instead
     if (!this.isGrowth) adaptPopulation(this); // no-op unless params.adapt
+    if (this.params.shrinkProb > 0) this.shrinkPopulation();
     this.trail.diffuseDecay(this.params.decay, this.params.boundary, this.params.diffuse);
     this.tick++;
   }
@@ -167,7 +168,7 @@ export class Simulation {
   // Random processing order over the current population (collision mode).
   shuffledOrder() {
     const n = this.agentCount;
-    if (this.isGrowth || this.params.adapt) for (let k = 0; k < n; k++) this.order[k] = k; // population changes
+    if (this.isGrowth || this.params.adapt || this.params.shrinkProb > 0) for (let k = 0; k < n; k++) this.order[k] = k; // population changes
     shuffle(this.order, this.rand, n);
     return this.order;
   }
@@ -177,6 +178,16 @@ export class Simulation {
   copyAgent(from, to) {
     for (const a of [this.px, this.py, this.pz, this.heading, this.hx, this.hy, this.hz, this.phase, this.energy]) {
       if (a) a[to] = a[from];
+    }
+  }
+
+  // Plasmodial shrinkage (Jones 2010 §4.2, p.147): "agent particles, chosen at random, are removed
+  // from the environment. Agents are never readmitted ... The probability of agent removal was set
+  // to 0.00025 for each agent at every scheduler step."
+  shrinkPopulation() {
+    const p = this.params, floor = Math.max(1, p.shrinkMinAgents | 0);
+    for (let i = this.agentCount - 1; i >= 0 && this.agentCount > floor; i--) {
+      if (this.rand() < p.shrinkProb) this.removeAgent(i);
     }
   }
 

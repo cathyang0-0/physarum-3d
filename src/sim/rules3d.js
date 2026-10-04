@@ -41,12 +41,11 @@ export function stepAgents3D(sim) {
   const n = sim.agentCount;
 
   if (sim.collision) {
-    const order = sim.shuffledOrder();
-    for (let k = 0; k < n; k++) {
-      const i = order[k];
-      senseRotate(ctx, i);
-      move(ctx, i);
-    }
+    // Same stage order as Jones 2010 (see rules2d.js): motor stage, then sensory stage.
+    let order = sim.shuffledOrder();
+    for (let k = 0; k < n; k++) move(ctx, order[k]);
+    order = sim.shuffledOrder();
+    for (let k = 0; k < n; k++) senseRotate(ctx, order[k]);
   } else {
     for (let i = 0; i < n; i++) senseRotate(ctx, i);
     for (let i = 0; i < n; i++) move(ctx, i);

@@ -61,7 +61,7 @@ const app = {
       }
     },
     loadDefaults: () => app.setMode(params.mode),
-    example: Object.keys(EXAMPLES)[0],
+    example: Object.keys(EXAMPLES)[0], // shown in the dropdown; loading happens on change
     loadExample: (name) => {
       const ex = EXAMPLES[name];
       Object.assign(params, defaultsFor(ex.mode), { running: true });

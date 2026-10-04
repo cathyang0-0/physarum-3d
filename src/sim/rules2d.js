@@ -29,15 +29,14 @@ export function stepAgents2D(sim) {
   const n = sim.agentCount;
 
   if (sim.collision) {
-    // Jones-faithful: agents are processed one at a time in a fresh random order each tick
-    // ("iteration of the particle population is performed randomly"), so each agent sees the
-    // occupancy and trail left by the agents processed before it.
-    const order = sim.shuffledOrder();
-    for (let k = 0; k < n; k++) {
-      const i = order[k];
-      senseRotate(ctx, i);
-      move(ctx, i);
-    }
+    // Jones 2010 p.133: "every agent attempts to move forward one step ... After every agent has
+    // attempted to move, the entire population performs its sensory behavior", and "Agents are
+    // selected from the population randomly in the motor and sensory stages".
+    // So: motor stage for everyone (fresh random order), then sensory stage (fresh random order).
+    let order = sim.shuffledOrder();
+    for (let k = 0; k < n; k++) move(ctx, order[k]);
+    order = sim.shuffledOrder();
+    for (let k = 0; k < n; k++) senseRotate(ctx, order[k]);
   } else {
     // Jenson-style, parallel-friendly: every agent senses the same trail snapshot, then all move
     // and deposit. Order no longer matters, which is what a GPU version will do.
