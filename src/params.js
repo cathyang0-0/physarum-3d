@@ -3,7 +3,7 @@
 // A preset file is just { format, version, params, food } — see ui/presets.js.
 
 // Parameters that change array sizes or initial state: editing them triggers a reset.
-export const STRUCTURAL = ['mode', 'model', 'initialAgents', 'maxAgents', 'gridX', 'gridY', 'gridZ', 'agentCount', 'seed', 'collision', 'spawnAt', 'spawnRadius'];
+export const STRUCTURAL = ['mode', 'model', 'adapt', 'initialAgents', 'maxAgents', 'gridX', 'gridY', 'gridZ', 'agentCount', 'seed', 'collision', 'spawnAt', 'spawnRadius'];
 
 const MODEL_FROM_SOURCE = {
   sensorAngle: 90,     // SA, degrees — arXiv:1511.07654 §3
@@ -41,6 +41,15 @@ export const DEFAULTS_2D = {
   divideProb: 0.03,      // 0 = off. per-tick chance that a well-fed agent splits
   divideMinEnergy: 0.6,  // only agents with at least this much energy may split
   fedDepositBoost: 1,    // 0 = off. deposit × (1 + boost · energy)
+  // population adaptation (Jones model only) — tuned, not from source (src/sim/adapt.js)
+  adapt: false,          // off = fixed population (Jones)
+  adaptInterval: 5,      // ticks between checks
+  adaptRadius: 3,        // window = (2r+1)^d cells
+  adaptLow: 0.2,         // density (agents per cell in the window) below this → may divide
+  adaptHigh: 0.6,        // density above this → may be removed
+  adaptDivideProb: 0.5,  // per check
+  adaptRemoveProb: 0.1,  // per check
+  adaptMinAgents: 200,
   // run / render
   running: true, ticksPerFrame: 1,
   showTrail: true, showAgents: false, displayScale: 0, trailThreshold: 0.25, pointSize: 0.6,

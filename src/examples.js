@@ -14,6 +14,15 @@ export const EXAMPLES = {
     food: 6,
   },
 
+  // Same, but the population adapts (crowded agents removed, sparse ones divide), so the network
+  // can stay thin AND connected while it contracts. Our rule, not from Jones.
+  '2D · shortest paths + population adaptation': {
+    mode: '2d',
+    over: { agentCount: 9830, maxAgents: 12000, adapt: true, collision: true, boundary: 'bounce',
+            foodWeight: 0, foodStrength: 100, foodRadius: 3, ticksPerFrame: 10 },
+    food: 6,
+  },
+
   // Thin 3D tubes need collision off + partial diffusion; food pins the network.
   '3D · thin network through food': {
     mode: '3d',

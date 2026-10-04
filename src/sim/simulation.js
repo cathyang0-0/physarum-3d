@@ -11,6 +11,7 @@
 
 import { mulberry32, shuffle } from './rng.js';
 import { updateFoodField, lifeCycle } from './growth.js';
+import { adaptPopulation } from './adapt.js';
 import { TrailGrid } from './trail.js';
 import { stepAgents2D, wrapCoord } from './rules2d.js';
 import { stepAgents3D } from './rules3d.js';
@@ -45,8 +46,9 @@ export class Simulation {
     const maxAgents = this.collision ? Math.floor(this.trail.size * 0.9) : Infinity;
     const clamp = (v) => Math.max(1, Math.min(v | 0, maxAgents));
     // Jones: fixed population. Growth: start small, arrays sized for the maximum population.
-    this.capacity = clamp(this.isGrowth ? p.maxAgents : p.agentCount);
-    this.agentCount = this.isGrowth ? Math.min(clamp(p.initialAgents), this.capacity) : this.capacity;
+    // Jones + adapt: start at agentCount, may grow up to maxAgents.
+    this.capacity = clamp(this.isGrowth ? p.maxAgents : p.adapt ? Math.max(p.agentCount, p.maxAgents) : p.agentCount);
+    this.agentCount = this.isGrowth ? Math.min(clamp(p.initialAgents), this.capacity) : clamp(p.agentCount);
     const n = this.capacity;
 
     this.px = new Float32Array(n);
@@ -126,6 +128,7 @@ export class Simulation {
     else stepAgents3D(this);
     if (this.isGrowth) lifeCycle(this);
     else this.applySources(); // growth model: food attracts through foodField instead
+    if (!this.isGrowth) adaptPopulation(this); // no-op unless params.adapt
     this.trail.diffuseDecay(this.params.decay, this.params.boundary, this.params.diffuse);
     this.tick++;
   }
@@ -160,7 +163,7 @@ export class Simulation {
   // Random processing order over the current population (collision mode).
   shuffledOrder() {
     const n = this.agentCount;
-    if (this.isGrowth) for (let k = 0; k < n; k++) this.order[k] = k; // population changes
+    if (this.isGrowth || this.params.adapt) for (let k = 0; k < n; k++) this.order[k] = k; // population changes
     shuffle(this.order, this.rand, n);
     return this.order;
   }

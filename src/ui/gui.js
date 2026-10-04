@@ -50,6 +50,18 @@ export function buildGUI(app) {
   app.sensorCountController = add(model, 'sensorCount', 2, 16, 1).name('3D: cone sensors');
   app.steeringController = add(model, 'steering', ['argmax', 'weighted']).name('3D: steering');
 
+  // Population adaptation (ours, Jones model only): crowded agents removed, sparse ones divide.
+  const adapt = (app.adaptFolder = gui.addFolder('Population adaptation (Jones model)'));
+  add(adapt, 'adapt').name('adapt population');
+  add(adapt, 'adaptInterval', 1, 50, 1).name('check every N ticks');
+  add(adapt, 'adaptRadius', 1, 10, 1).name('window radius');
+  add(adapt, 'adaptLow', 0, 1, 0.01).name('divide below density');
+  add(adapt, 'adaptHigh', 0, 1, 0.01).name('remove above density');
+  add(adapt, 'adaptDivideProb', 0, 1, 0.01).name('divide prob.');
+  add(adapt, 'adaptRemoveProb', 0, 1, 0.01).name('remove prob.');
+  add(adapt, 'adaptMinAgents', 1, 100000, 1).name('min agents');
+  add(adapt, 'maxAgents', 100, 500000, 100).name('max agents');
+
   // Growth model (ours, not from Jones). Setting a value to 0 switches that rule off.
   const growth = (app.growthFolder = gui.addFolder('Growth (model = growth)'));
   add(growth, 'initialAgents', 1, 5000, 1).name('initial agents');
@@ -100,6 +112,7 @@ export function refreshGUI(app) {
     .forEach((c) => c.enable(is3D));
   const growth = app.params.model === 'growth';
   app.growthFolder.controllersRecursive().forEach((c) => c.enable(growth));
+  app.adaptFolder.controllersRecursive().forEach((c) => c.enable(!growth));
   app.agentCountController.enable(!growth);
   app.collisionController.enable(!growth); // growth always uses collision
   app.planeController.max(Math.max(1, app.params.gridZ - 1));
