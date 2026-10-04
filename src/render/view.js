@@ -26,13 +26,7 @@ export class View {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(BG);
     this.camera = new THREE.PerspectiveCamera(40, 1, 0.01, 1000);
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.12;   // settles quickly after a drag, no long drift
-    this.controls.rotateSpeed = 0.7;      // calmer than the default 1.0
-    this.controls.screenSpacePanning = true;
-    this.controls.minDistance = 2;
-    this.controls.maxDistance = 80;
+    this.makeControls();
 
     this.root = new THREE.Group();
     this.scene.add(this.root);
@@ -119,25 +113,37 @@ export class View {
     this.resetCamera();
   }
 
-  // Mouse mapping. 2D: the sheet stays flat — left-drag pans, no rotation. 3D: left-drag orbits
-  // around the box centre, right-drag pans. Wheel zooms in both.
-  resetCamera() {
-    const c = this.controls;
-    // Drop any leftover rotation/pan momentum (damping) from before the reset.
-    c.enableDamping = false;
-    c.update();
+  // OrbitControls reads camera.up once, when it is created, to decide which way is "up" for
+  // orbiting. So it is (re)created after camera.up is set — otherwise, with our z-up 3D scene,
+  // dragging up/down turns the view sideways. Re-creating also drops leftover drag momentum.
+  makeControls() {
+    this.controls?.dispose();
+    const c = (this.controls = new OrbitControls(this.camera, this.renderer.domElement));
     c.enableDamping = true;
+    c.dampingFactor = 0.12;   // settles quickly after a drag, no long drift
+    c.rotateSpeed = 0.7;      // calmer than the default 1.0
+    c.screenSpacePanning = true;
+    c.minDistance = 2;
+    c.maxDistance = 80;
+  }
+
+  // Mouse mapping. 2D: the sheet stays flat — left-drag pans, no rotation. 3D: left-drag orbits
+  // around the box centre (up/down = tilt, left/right = turn around the vertical z axis),
+  // right-drag pans. Wheel zooms in both.
+  resetCamera() {
     if (this.is2D) {
       this.camera.position.set(0, 0, 18);
       this.camera.up.set(0, 1, 0);
-      c.enableRotate = false;
-      c.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
     } else {
       this.camera.position.set(15, -18, 12);
       this.camera.up.set(0, 0, 1);
-      c.enableRotate = true;
-      c.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
     }
+    this.makeControls();
+    const c = this.controls;
+    c.enableRotate = !this.is2D;
+    c.mouseButtons = this.is2D
+      ? { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }
+      : { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
     c.target.set(0, 0, 0);
     c.update();
   }
