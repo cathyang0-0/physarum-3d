@@ -44,12 +44,12 @@ export function buildGUI(app) {
   app.steeringController = add(model, 'steering', ['argmax', 'weighted']).name('3D: steering');
 
   // Plasmodial shrinkage (Jones 2010 §4.2): random removal from a dense sheet.
-  const shrink = (app.shrinkFolder = gui.addFolder('Shrinkage (Jones 2010 §4.2)'));
+  const shrink = (app.shrinkFolder = gui.addFolder('Shrinkage (Jones §4.2)'));
   shrink.add(p, 'shrinkProb', 0, 0.005, 0.00005).name('removal prob. / agent / tick');
   shrink.add(p, 'shrinkMinAgents', 1, 100000, 1).name('stop at agents');
 
   // Population adaptation (ours, Jones model only): crowded agents removed, sparse ones divide.
-  const adapt = (app.adaptFolder = gui.addFolder('Population adaptation (Jones model)'));
+  const adapt = (app.adaptFolder = gui.addFolder('Adaptation (ours)'));
   add(adapt, 'adapt').name('adapt population');
   add(adapt, 'adaptInterval', 1, 50, 1).name('check every N ticks');
   add(adapt, 'adaptRadius', 1, 10, 1).name('window radius');
@@ -62,7 +62,7 @@ export function buildGUI(app) {
   add(adapt, 'maxAgents', 100, 500000, 100).name('max agents');
 
   // Growth model (ours, not from Jones). Setting a value to 0 switches that rule off.
-  const growth = (app.growthFolder = gui.addFolder('Growth (model = growth)'));
+  const growth = (app.growthFolder = gui.addFolder('Growth model (ours)'));
   add(growth, 'initialAgents', 1, 5000, 1).name('initial agents');
   add(growth, 'maxAgents', 100, 200000, 100).name('max agents');
   add(growth, 'hungerSensing').name('only hungry smell food');

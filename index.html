@@ -44,7 +44,8 @@
     .lil-gui.root { position: absolute; top: 0; right: 0; max-height: calc(100% - var(--bottom));
                     overflow-y: auto; border-left: 1px solid var(--line); z-index: 9; }
     .lil-gui.root.hidden { display: none; }
-    .lil-gui .title { border-bottom: 1px solid #eee; }
+    .lil-gui .title { border-bottom: 1px solid #eee; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lil-gui .controller .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   </style>
   <script type="importmap">
     {
