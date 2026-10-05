@@ -2,8 +2,13 @@
 // forms from a random start while the camera circles the box. Writes grayscale PGM frames to
 // out/teaser/; tools/frames_to_gif.py turns them into a GIF.
 //
-// Usage: node tools/teaser.mjs [--domains box,sphere,torus,gyroid] [--frames 45] [--size 540]
-//                              [--food 10] [--seed 1]      (--frames = frames per shape)
+// Each shape: a sped-up "grow" phase (slow at first, then faster) until the network is mature,
+// then a "hold" phase at normal speed while the camera turns half a circle.
+//
+// Usage: node tools/teaser.mjs [--domains box,sphere,torus,gyroid] [--size 800] [--food 10]
+//          [--seed 1] [--grow 30] [--hold 50] [--mature 3500] [--holdTicks 4]
+//   --grow / --hold: frames per phase; --mature: ticks reached at the end of the grow phase;
+//   --holdTicks: ticks per frame in the hold phase
 //
 // Drawing matches the browser view: cells whose trail is above 0.3 × the in-tube trail level are
 // drawn as small dark points; food as black dots; the box as thin grey edges.
@@ -16,7 +21,9 @@ import { EXAMPLES, MAIN } from '../src/examples.js';
 const args = Object.fromEntries(
   process.argv.slice(2).reduce((acc, a, i, all) => (a.startsWith('--') ? [...acc, [a.slice(2), all[i + 1]]] : acc), []),
 );
-const PER = Number(args.frames ?? 45), W = Number(args.size ?? 540), H = W;
+const W = Number(args.size ?? 800), H = W;
+const GROW = Number(args.grow ?? 30), HOLD = Number(args.hold ?? 50), PER = GROW + HOLD;
+const MATURE = Number(args.mature ?? 3500), HOLD_TICKS = Number(args.holdTicks ?? 4);
 const DOMAINS = (args.domains ?? 'box,sphere,torus,gyroid').split(',');
 const FRAMES = PER * DOMAINS.length;
 const OUT = 'out/teaser';
@@ -24,11 +31,13 @@ const OUT = 'out/teaser';
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
 
-// Ticks per frame within one shape: slow at first so the network can be seen forming, then faster.
-const ticksFor = (f) => (f < PER / 3 ? 8 : f < (2 * PER) / 3 ? 20 : 40);
+// Simulation time at grow frame f: quadratic ease-in, so the first moments of formation are slow.
+const tickAtGrowFrame = (f) => Math.round(MATURE * ((f + 1) / GROW) ** 2);
+// Camera azimuth advance per frame: slow while growing, a half turn during the hold.
+const turnFor = (f) => (f < GROW ? (Math.PI / 3) / GROW : Math.PI / HOLD);
 
 const img = new Float32Array(W * H); // 1 = white, 0 = black
-let sim, nx, ny, nz, domain, frame = 0;
+let sim, nx, ny, nz, domain, frame = 0, azimuth = -0.9;
 for (domain of DOMAINS) {
   const p = { ...defaultsFor('3d'), ...EXAMPLES[MAIN['3d']].over, seed: Number(args.seed ?? 1), domain };
   if (domain !== 'box') { // same finer grid the app uses for shapes (main.js applyShapeResolution)
@@ -41,8 +50,10 @@ for (domain of DOMAINS) {
   sim.scatterSources(Number(args.food ?? 10));
   ({ nx, ny, nz } = sim.trail);
   for (let f = 0; f < PER; f++, frame++) {
-    for (let k = 0; k < ticksFor(f); k++) sim.step();
-    render(frame / FRAMES);
+    const target = f < GROW ? tickAtGrowFrame(f) : MATURE + (f - GROW + 1) * HOLD_TICKS;
+    while (sim.tick < target) sim.step();
+    azimuth += turnFor(f);
+    render();
     const bytes = Buffer.alloc(W * H);
     for (let i = 0; i < W * H; i++) bytes[i] = Math.round(255 * Math.max(0, Math.min(1, img[i])));
     writeFileSync(`${OUT}/frame_${String(frame).padStart(4, '0')}.pgm`,
@@ -54,10 +65,11 @@ console.log(`wrote ${FRAMES} frames to ${OUT}/`);
 
 // ---- tiny point renderer --------------------------------------------------------------------
 
-function render(phase) {
+function render() {
   img.fill(1);
-  const az = -0.9 + phase * 2 * Math.PI, el = 0.42; // camera azimuth / elevation (radians)
-  const dist = 3.2 * nx, focal = 1.75 * W;           // camera distance and focal length (pixels)
+  const az = azimuth, el = 0.42; // camera azimuth / elevation (radians)
+  // camera distance and focal length (pixels); the box needs more room than the other shapes
+  const dist = (domain === 'box' ? 3.8 : 3.1) * nx, focal = 1.75 * W;
   const ca = Math.cos(az), sa = Math.sin(az), ce = Math.cos(el), se = Math.sin(el);
   // world (centred on the box) → camera: rotate about z by az, then tilt by el
   const project = (x, y, z) => {
