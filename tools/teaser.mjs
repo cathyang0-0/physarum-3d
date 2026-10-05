@@ -35,6 +35,7 @@ for (domain of DOMAINS) {
     p.gridX = p.gridY = p.gridZ = Math.round(p.gridX * 1.5);
     p.agentCount = Math.round(p.agentCount * 1.5 ** 3);
     p.foodRadius *= 1.5;
+    p.wallRepel = true;
   }
   sim = new Simulation(p);
   sim.scatterSources(Number(args.food ?? 10));
