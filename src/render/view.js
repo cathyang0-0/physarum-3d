@@ -8,7 +8,7 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { DOMAIN_MARGIN } from '../sim/domain.js';
+import { DOMAIN_MARGIN, TORUS_R, TORUS_r, GYROID_T, gyroidValue, shapeContains } from '../sim/domain.js';
 
 const WORLD_SIZE = 10; // longest grid side maps to this many world units
 
@@ -58,7 +58,7 @@ export class View {
 
     // Bounding box: only when the shape is the box itself (and, very faint, for the gyroid, which is
     // a labyrinth cut to the box). Other shapes show their own outline instead.
-    const domain = sim.params.domain ?? 'box';
+    const domain = (this.domain = sim.params.domain ?? 'box');
     if (this.is2D || domain === 'box' || domain === 'gyroid') {
       const color = !this.is2D && domain === 'gyroid' ? 0xe8e8e8 : LINE;
       this.root.add(new THREE.Box3Helper(new THREE.Box3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(nx, ny, nz)), color));
@@ -86,11 +86,13 @@ export class View {
       this.trailObj.frustumCulled = false;
       this.root.add(this.trailObj);
 
-      // Food placement plane at z = foodPlaneZ, drawn as the shape's cross-section at that height
-      // (from the same mask the simulation uses, so it shows exactly where food can go).
-      this.planeTexData = new Uint8Array(nx * ny * 4);
-      this.planeTex = new THREE.DataTexture(this.planeTexData, nx, ny, THREE.RGBAFormat);
+      // Food placement plane at z = foodPlaneZ, drawn as the shape's cross-section at that height.
+      // Evaluated from the shape formula at 4× the grid resolution, so its edge is smooth.
+      this.planeRes = 4 * Math.max(nx, ny);
+      this.planeTexData = new Uint8Array(this.planeRes * this.planeRes * 4);
+      this.planeTex = new THREE.DataTexture(this.planeTexData, this.planeRes, this.planeRes, THREE.RGBAFormat);
       this.planeTex.magFilter = THREE.LinearFilter;
+      this.planeTex.minFilter = THREE.LinearFilter;
       this.placePlane = new THREE.Mesh(
         new THREE.PlaneGeometry(nx, ny),
         new THREE.MeshBasicMaterial({ map: this.planeTex, transparent: true, side: THREE.DoubleSide, depthWrite: false }),
@@ -131,8 +133,9 @@ export class View {
     if (domain === 'sphere') { geo = new THREE.SphereGeometry(h, 18, 10).rotateX(Math.PI / 2); wire = true; }
     if (domain === 'pyramid') geo = new THREE.ConeGeometry(h * Math.SQRT2, 2 * h, 4, 1).rotateY(Math.PI / 4).rotateX(Math.PI / 2);
     if (domain === 'cone') geo = new THREE.ConeGeometry(h, 2 * h, 16, 1).rotateX(Math.PI / 2);
-    if (domain === 'torus') { geo = new THREE.TorusGeometry(0.62 * h, 0.32 * h, 10, 36); wire = true; }
-    if (!geo) return; // box: the box itself; gyroid: too intricate to outline
+    if (domain === 'torus') { geo = new THREE.TorusGeometry(TORUS_R * h, TORUS_r * h, 10, 36); wire = true; }
+    if (domain === 'gyroid') { this.addGyroidStipple(nx, ny, nz); return; }
+    if (!geo) return; // box: the box frame is its outline
     const lines = new THREE.LineSegments(
       wire ? new THREE.WireframeGeometry(geo) : new THREE.EdgesGeometry(geo, 1),
       new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: wire ? 0.07 : 0.18, depthWrite: false }),
@@ -140,6 +143,22 @@ export class View {
     geo.dispose();
     lines.position.set(nx / 2, ny / 2, nz / 2);
     this.root.add(lines);
+  }
+
+  // The gyroid's channel walls, drawn as a faint stipple of points on the surface |g| = T, so the
+  // labyrinth can be seen (a wireframe of it would be unreadable).
+  addGyroidStipple(nx, ny, nz) {
+    const pts = [], r = Math.random; // display only: no need for the seeded rng
+    const h = DOMAIN_MARGIN;
+    for (let k = 0; k < 400000 && pts.length < 3 * 26000; k++) {
+      const x = (2 * r() - 1), y = (2 * r() - 1), z = (2 * r() - 1);
+      if (Math.abs(Math.abs(gyroidValue(x, y, z)) - GYROID_T) > 0.02) continue;
+      pts.push(((x * h + 1) / 2) * nx, ((y * h + 1) / 2) * ny, ((z * h + 1) / 2) * nz);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+    const m = new THREE.PointsMaterial({ color: 0x000000, size: 0.45 * this.root.scale.x, transparent: true, opacity: 0.22, depthWrite: false });
+    this.root.add(new THREE.Points(g, m));
   }
 
   // OrbitControls reads camera.up once, when it is created, to decide which way is "up" for
@@ -164,7 +183,9 @@ export class View {
       this.camera.position.set(0, 0, 18);
       this.camera.up.set(0, 1, 0);
     } else {
-      this.camera.position.set(15, -18, 12);
+      // Shapes that fill less of the box (all but the box and the gyroid) are framed closer.
+      const s = ['box', 'gyroid'].includes(this.domain ?? 'box') ? 1 : 0.8;
+      this.camera.position.set(15 * s, -18 * s, 12 * s);
       this.camera.up.set(0, 0, 1);
     }
     this.makeControls();
@@ -276,23 +297,18 @@ export class View {
     }
   }
 
-  // Cross-section of the habitable shape at height z: light fill inside, darker outline.
+  // Cross-section of the habitable shape at the plane's height: a light, smooth-edged fill.
   updatePlaneSlice(z) {
     const { nx, ny, nz } = this.dims;
-    const iz = Math.min(nz - 1, Math.max(0, Math.floor(z)));
-    if (iz === this.planeSliceZ) return;
-    this.planeSliceZ = iz;
-    const m = this.mask, t = this.planeTexData;
-    const inside = (x, y) => x >= 0 && y >= 0 && x < nx && y < ny && (!m || m[x + nx * (y + ny * iz)] === 1);
-    for (let y = 0; y < ny; y++)
-      for (let x = 0; x < nx; x++) {
-        const k = 4 * (x + nx * y);
-        let a = 0;
-        if (inside(x, y)) {
-          const edge = !inside(x + 1, y) || !inside(x - 1, y) || !inside(x, y + 1) || !inside(x, y - 1);
-          a = edge ? 120 : 20;
-        }
-        t[k] = 0; t[k + 1] = 0; t[k + 2] = 0; t[k + 3] = a;
+    const zc = Math.min(nz - 1, Math.max(0, Math.floor(z))) + 0.5; // the cell layer food goes into
+    if (zc === this.planeSliceZ) return;
+    this.planeSliceZ = zc;
+    const R = this.planeRes, t = this.planeTexData;
+    for (let j = 0; j < R; j++)
+      for (let i = 0; i < R; i++) {
+        const k = 4 * (i + R * j);
+        const inside = shapeContains(this.domain, ((i + 0.5) / R) * nx, ((j + 0.5) / R) * ny, zc, nx, ny, nz);
+        t[k] = 0; t[k + 1] = 0; t[k + 2] = 0; t[k + 3] = inside ? 26 : 0;
       }
     this.planeTex.needsUpdate = true;
   }

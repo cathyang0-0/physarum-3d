@@ -31,6 +31,10 @@ const img = new Float32Array(W * H); // 1 = white, 0 = black
 let sim, nx, ny, nz, domain, frame = 0;
 for (domain of DOMAINS) {
   const p = { ...defaultsFor('3d'), ...EXAMPLES[MAIN['3d']].over, seed: Number(args.seed ?? 1), domain };
+  if (domain !== 'box') { // same finer grid the app uses for shapes (main.js applyShapeResolution)
+    p.gridX = p.gridY = p.gridZ = Math.round(p.gridX * 1.5);
+    p.agentCount = Math.round(p.agentCount * 1.5 ** 3);
+  }
   sim = new Simulation(p);
   sim.scatterSources(Number(args.food ?? 10));
   ({ nx, ny, nz } = sim.trail);

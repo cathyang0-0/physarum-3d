@@ -6,21 +6,37 @@
 // axis is y, so the pyramid and the cone both become a triangle, the sphere a disc, the torus a
 // ring, the gyroid its z = 0 slice. 'box' = the whole grid (no mask).
 
-const MARGIN = 0.94; // keep shapes one or two cells away from the grid faces
+const MARGIN = 0.98; // keep shapes about a cell away from the grid faces
 
 export const SHAPES = {
   box: null,
   sphere: (x, y, z) => x * x + y * y + z * z <= 1,
   pyramid: (x, y, z) => Math.max(Math.abs(x), Math.abs(y)) <= (1 - z) / 2,
   cone: (x, y, z) => Math.hypot(x, y) <= (1 - z) / 2,
-  torus: (x, y, z) => (Math.hypot(x, y) - 0.62) ** 2 + z * z <= 0.32 ** 2,
+  torus: (x, y, z) => (Math.hypot(x, y) - TORUS_R) ** 2 + z * z <= TORUS_r ** 2,
   // Thickened gyroid sheet: a connected labyrinth of channels (a triply periodic minimal surface).
-  gyroid: (x, y, z) => {
-    const k = 1.5 * Math.PI;
-    const g = Math.sin(k * x) * Math.cos(k * y) + Math.sin(k * y) * Math.cos(k * z) + Math.sin(k * z) * Math.cos(k * x);
-    return Math.abs(g) < 0.55;
-  },
+  gyroid: (x, y, z) => Math.abs(gyroidValue(x, y, z)) < GYROID_T,
 };
+
+export const TORUS_R = 0.58, TORUS_r = 0.4; // ring radius and tube radius (normalised)
+export const GYROID_T = 0.6;                 // half-thickness of the gyroid sheet (in g units)
+const GYROID_K = 1.25 * Math.PI;             // 1.25 periods across the box: wide, readable channels
+
+export function gyroidValue(x, y, z) {
+  const k = GYROID_K;
+  return Math.sin(k * x) * Math.cos(k * y) + Math.sin(k * y) * Math.cos(k * z) + Math.sin(k * z) * Math.cos(k * x);
+}
+
+// Is a continuous grid position inside the shape? (Same rule as the mask, but at any resolution —
+// used to draw smooth cross-sections.)
+export function shapeContains(name, x, y, z, nx, ny, nz) {
+  const inside = SHAPES[name];
+  if (!inside) return true;
+  const u = (x / nx * 2 - 1) / MARGIN, v = (y / ny * 2 - 1) / MARGIN;
+  const w = nz === 1 ? 0 : (z / nz * 2 - 1) / MARGIN;
+  if (Math.abs(u) > 1 || Math.abs(v) > 1 || Math.abs(w) > 1) return false;
+  return nz === 1 && (name === 'pyramid' || name === 'cone') ? inside(u, 0, v) : inside(u, v, w);
+}
 
 // Returns { mask: Uint8Array | null, fraction } for the grid; mask[i] = 1 where habitable.
 export function buildDomain(name, nx, ny, nz) {

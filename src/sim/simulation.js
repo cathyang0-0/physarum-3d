@@ -137,12 +137,9 @@ export class Simulation {
     else this.applySources(); // growth model: food attracts through foodField instead
     if (!this.isGrowth) adaptPopulation(this); // no-op unless params.adapt
     if (this.params.shrinkProb > 0) this.shrinkPopulation();
-    this.trail.diffuseDecay(this.params.decay, this.params.boundary, this.params.diffuse);
-    if (this.mask) {
-      // Outside the shape there is no medium: attractant that diffuses out of it is lost.
-      const d = this.trail.data, m = this.mask;
-      for (let i = 0; i < d.length; i++) if (!m[i]) d[i] = 0;
-    }
+    // Outside the habitable shape there is no medium: trail there stays 0 (attractant that
+    // diffuses out of the shape is lost).
+    this.trail.diffuseDecay(this.params.decay, this.params.boundary, this.params.diffuse, this.mask);
     this.tick++;
   }
 
@@ -310,7 +307,7 @@ export class Simulation {
           for (let dx = -Rc; dx <= Rc; dx++) {
             if (dx * dx + dy * dy + dz * dz > R * R) continue;
             const i = t.cellOf(cx + dx + 0.5, cy + dy + 0.5, cz + dz + 0.5, wrap);
-            if (i >= 0) t.data[i] += s.strength;
+            if (i >= 0 && (!this.mask || this.mask[i])) t.data[i] += s.strength;
           }
     }
   }

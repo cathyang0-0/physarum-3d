@@ -70,6 +70,7 @@ const app = {
     setDomain: (domain) => {
       const nFood = sim.sources.length;
       params.domain = domain;
+      applyShapeResolution();
       sim.clearSources();
       sim.reset(); // builds the new mask (needed to scatter food inside it) and re-seeds the food rng
       sim.scatterSources(nFood);
@@ -80,6 +81,9 @@ const app = {
       const domain = params.domain; // the chosen shape survives mode switches and examples
       Object.assign(params, defaultsFor(ex.mode), ex.over, { running: true });
       if (ex.over.domain === undefined) params.domain = domain;
+      base = { gridX: params.gridX, gridY: params.gridY, gridZ: params.gridZ, agentCount: params.agentCount,
+               ticksPerFrame: params.ticksPerFrame };
+      applyShapeResolution();
       if (ex.model === 'growth') { app.setModel('growth'); return; }
       sim.clearSources();
       sim.reset(); // re-seed the food rng
@@ -96,6 +100,22 @@ const app = {
     },
   },
 };
+// Shapes other than the box fill only part of the grid, so they get a finer grid (1.5× per side)
+// to leave room for the network relative to the food and the tube width. Agent counts scale with
+// the grid volume (same density); fewer ticks per frame keep the view smooth. `base` holds the
+// loaded setup's own values.
+let base = null;
+function applyShapeResolution() {
+  if (!base) return;
+  const f = params.domain === 'box' ? 1 : 1.5, is3D = params.mode === '3d';
+  params.gridX = Math.round(base.gridX * f);
+  params.gridY = Math.round(base.gridY * f);
+  params.gridZ = is3D ? Math.round(base.gridZ * f) : base.gridZ;
+  params.agentCount = Math.round(base.agentCount * f ** (is3D ? 3 : 2));
+  params.ticksPerFrame = f === 1 ? base.ticksPerFrame : Math.max(1, Math.round(base.ticksPerFrame / 2));
+  params.foodPlaneZ = Math.floor(params.gridZ / 2);
+}
+
 app.gui = buildGUI(app);
 buildToolbar(app);
 app.setMode('3d'); // start on the main 3D setup
