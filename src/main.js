@@ -109,7 +109,7 @@ canvas.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clie
 let lastMouse = null;
 const updatePreview = () => {
   const pos = lastMouse && view.pickOnPlane(lastMouse.x, lastMouse.y, params.foodPlaneZ);
-  view.showPreview(pos);
+  view.showPreview(pos && sim.isHabitable(pos) ? pos : null); // only where food can go
 };
 canvas.addEventListener('pointermove', (e) => { lastMouse = { x: e.clientX, y: e.clientY }; updatePreview(); });
 canvas.addEventListener('pointerleave', () => { lastMouse = null; view.showPreview(null); });

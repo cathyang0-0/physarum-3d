@@ -56,9 +56,13 @@ export class View {
     this.root.position.set((-nx / 2) * s, (-ny / 2) * s, (-nz / 2) * s);
     this.root.updateMatrixWorld();
 
-    // Bounding box
-    const box = new THREE.Box3Helper(new THREE.Box3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(nx, ny, nz)), LINE);
-    this.root.add(box);
+    // Bounding box: only when the shape is the box itself (and, very faint, for the gyroid, which is
+    // a labyrinth cut to the box). Other shapes show their own outline instead.
+    const domain = sim.params.domain ?? 'box';
+    if (this.is2D || domain === 'box' || domain === 'gyroid') {
+      const color = !this.is2D && domain === 'gyroid' ? 0xe8e8e8 : LINE;
+      this.root.add(new THREE.Box3Helper(new THREE.Box3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(nx, ny, nz)), color));
+    }
     this.mask = sim.mask;
     if (!this.is2D) this.addDomainOutline(sim.params.domain, nx, ny, nz);
 
@@ -82,12 +86,16 @@ export class View {
       this.trailObj.frustumCulled = false;
       this.root.add(this.trailObj);
 
-      // Food placement plane (translucent slice at z = foodPlaneZ)
+      // Food placement plane at z = foodPlaneZ, drawn as the shape's cross-section at that height
+      // (from the same mask the simulation uses, so it shows exactly where food can go).
+      this.planeTexData = new Uint8Array(nx * ny * 4);
+      this.planeTex = new THREE.DataTexture(this.planeTexData, nx, ny, THREE.RGBAFormat);
+      this.planeTex.magFilter = THREE.LinearFilter;
       this.placePlane = new THREE.Mesh(
         new THREE.PlaneGeometry(nx, ny),
-        new THREE.MeshBasicMaterial({ color: INK, transparent: true, opacity: 0.03, side: THREE.DoubleSide, depthWrite: false }),
+        new THREE.MeshBasicMaterial({ map: this.planeTex, transparent: true, side: THREE.DoubleSide, depthWrite: false }),
       );
-      this.placePlane.add(new THREE.LineSegments(new THREE.EdgesGeometry(this.placePlane.geometry), new THREE.LineBasicMaterial({ color: LINE })));
+      this.planeSliceZ = -1;
       this.root.add(this.placePlane);
     }
 
@@ -223,7 +231,8 @@ export class View {
     if (this.placePlane) {
       this.placePlane.position.set(this.dims.nx / 2, this.dims.ny / 2, p.foodPlaneZ);
       this.planeFlash = Math.max(0, this.planeFlash - 0.03);
-      this.placePlane.material.opacity = 0.03 + 0.12 * this.planeFlash;
+      this.placePlane.material.opacity = 0.55 + 0.45 * this.planeFlash;
+      this.updatePlaneSlice(p.foodPlaneZ);
     }
     this.updateFood(sim, p);
   }
@@ -265,6 +274,27 @@ export class View {
       m.position.set(s.x, s.y, this.is2D ? 1 : s.z);
       this.foodGroup.add(m);
     }
+  }
+
+  // Cross-section of the habitable shape at height z: light fill inside, darker outline.
+  updatePlaneSlice(z) {
+    const { nx, ny, nz } = this.dims;
+    const iz = Math.min(nz - 1, Math.max(0, Math.floor(z)));
+    if (iz === this.planeSliceZ) return;
+    this.planeSliceZ = iz;
+    const m = this.mask, t = this.planeTexData;
+    const inside = (x, y) => x >= 0 && y >= 0 && x < nx && y < ny && (!m || m[x + nx * (y + ny * iz)] === 1);
+    for (let y = 0; y < ny; y++)
+      for (let x = 0; x < nx; x++) {
+        const k = 4 * (x + nx * y);
+        let a = 0;
+        if (inside(x, y)) {
+          const edge = !inside(x + 1, y) || !inside(x - 1, y) || !inside(x, y + 1) || !inside(x, y - 1);
+          a = edge ? 120 : 20;
+        }
+        t[k] = 0; t[k + 1] = 0; t[k + 2] = 0; t[k + 3] = a;
+      }
+    this.planeTex.needsUpdate = true;
   }
 
   // Show (pos in grid coords) or hide (null) the food preview.
