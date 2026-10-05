@@ -65,7 +65,7 @@ node tools/headless.mjs --ticks 2000 --every 500 --out out/run.png
 Teaser animation (writes PNG frames, then a GIF via Python + Pillow):
 
 ```bash
-node tools/teaser.mjs && python3 tools/frames_to_gif.py
+node tools/teaser.mjs && python3 tools/frames_to_gif.py   # box → sphere → torus → gyroid
 ```
 
 ## Code

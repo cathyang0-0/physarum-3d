@@ -1,8 +1,9 @@
-// Render a teaser animation of the main 3D setup without a browser: the network forms from a
-// random start while the camera circles the box. Writes grayscale PGM frames to out/teaser/;
-// tools/frames_to_gif.py turns them into a GIF.
+// Render a teaser animation of the main 3D setup without a browser: in each shape, the network
+// forms from a random start while the camera circles the box. Writes grayscale PGM frames to
+// out/teaser/; tools/frames_to_gif.py turns them into a GIF.
 //
-// Usage: node tools/teaser.mjs [--frames 150] [--size 640] [--food 10] [--seed 1]
+// Usage: node tools/teaser.mjs [--domains box,sphere,torus,gyroid] [--frames 45] [--size 540]
+//                              [--food 10] [--seed 1]      (--frames = frames per shape)
 //
 // Drawing matches the browser view: cells whose trail is above 0.3 × the in-tube trail level are
 // drawn as small dark points; food as black dots; the box as thin grey edges.
@@ -15,32 +16,35 @@ import { EXAMPLES, MAIN } from '../src/examples.js';
 const args = Object.fromEntries(
   process.argv.slice(2).reduce((acc, a, i, all) => (a.startsWith('--') ? [...acc, [a.slice(2), all[i + 1]]] : acc), []),
 );
-const FRAMES = Number(args.frames ?? 150), W = Number(args.size ?? 540), H = W;
+const PER = Number(args.frames ?? 45), W = Number(args.size ?? 540), H = W;
+const DOMAINS = (args.domains ?? 'box,sphere,torus,gyroid').split(',');
+const FRAMES = PER * DOMAINS.length;
 const OUT = 'out/teaser';
-
-const ex = EXAMPLES[MAIN['3d']];
-const p = { ...defaultsFor('3d'), ...ex.over, seed: Number(args.seed ?? 1) };
-const sim = new Simulation(p);
-sim.scatterSources(Number(args.food ?? 10));
-const { nx, ny, nz } = sim.trail;
 
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
 
-// Ticks per frame: slow at the start so the network can be seen forming, faster later.
-const ticksFor = (f) => (f < 50 ? 6 : f < 100 ? 15 : 30);
+// Ticks per frame within one shape: slow at first so the network can be seen forming, then faster.
+const ticksFor = (f) => (f < PER / 3 ? 8 : f < (2 * PER) / 3 ? 20 : 40);
 
 const img = new Float32Array(W * H); // 1 = white, 0 = black
-for (let f = 0; f < FRAMES; f++) {
-  for (let k = 0; k < ticksFor(f); k++) sim.step();
-  render(f / FRAMES);
-  const bytes = Buffer.alloc(W * H);
-  for (let i = 0; i < W * H; i++) bytes[i] = Math.round(255 * Math.max(0, Math.min(1, img[i])));
-  writeFileSync(`${OUT}/frame_${String(f).padStart(4, '0')}.pgm`,
-    Buffer.concat([Buffer.from(`P5\n${W} ${H}\n255\n`), bytes]));
-  if (f % 25 === 0) console.log(`frame ${f}/${FRAMES}  tick ${sim.tick}`);
+let sim, nx, ny, nz, domain, frame = 0;
+for (domain of DOMAINS) {
+  const p = { ...defaultsFor('3d'), ...EXAMPLES[MAIN['3d']].over, seed: Number(args.seed ?? 1), domain };
+  sim = new Simulation(p);
+  sim.scatterSources(Number(args.food ?? 10));
+  ({ nx, ny, nz } = sim.trail);
+  for (let f = 0; f < PER; f++, frame++) {
+    for (let k = 0; k < ticksFor(f); k++) sim.step();
+    render(frame / FRAMES);
+    const bytes = Buffer.alloc(W * H);
+    for (let i = 0; i < W * H; i++) bytes[i] = Math.round(255 * Math.max(0, Math.min(1, img[i])));
+    writeFileSync(`${OUT}/frame_${String(frame).padStart(4, '0')}.pgm`,
+      Buffer.concat([Buffer.from(`P5\n${W} ${H}\n255\n`), bytes]));
+  }
+  console.log(`${domain}: ${PER} frames, ${sim.agentCount} agents, tick ${sim.tick}`);
 }
-console.log(`wrote ${FRAMES} frames to ${OUT}/ (final tick ${sim.tick})`);
+console.log(`wrote ${FRAMES} frames to ${OUT}/`);
 
 // ---- tiny point renderer --------------------------------------------------------------------
 

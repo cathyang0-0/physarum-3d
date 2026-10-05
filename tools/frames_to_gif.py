@@ -9,12 +9,16 @@ src = sys.argv[1] if len(sys.argv) > 1 else 'out/teaser'
 dst = sys.argv[2] if len(sys.argv) > 2 else 'out/teaser.gif'
 fps = float(sys.argv[3]) if len(sys.argv) > 3 else 15
 
+per = int(sys.argv[4]) if len(sys.argv) > 4 else 45            # frames per shape (as in teaser.mjs)
+names = (sys.argv[5] if len(sys.argv) > 5 else 'box,sphere,torus,gyroid').split(',')
+
 files = sorted(glob.glob(f'{src}/frame_*.pgm'))
 frames = []
-for f in files:
+for k, f in enumerate(files):
     im = Image.open(f).convert('L')
     d = ImageDraw.Draw(im)
-    d.text((16, im.height - 26), 'Physarum 3D  ·  Jones-model agents in 3D', fill=110)
+    shape = names[min(k // per, len(names) - 1)]
+    d.text((16, im.height - 26), f'Physarum 3D  ·  Jones-model agents  ·  {shape}', fill=110)
     # 32 grey levels, no dithering: keeps the file small enough for a slide deck
     frames.append(im.quantize(colors=32, dither=Image.Dither.NONE))
 # Hold the last frame a little longer before looping.
