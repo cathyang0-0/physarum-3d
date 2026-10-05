@@ -30,11 +30,13 @@ export const EXAMPLES = {
 
   // Same, with sensor angle 45° = rotation angle: Jones 2010's minimising regime (p.136), where
   // small loops close and the network contracts. In a closed shape it visibly converges onto paths
-  // between the food over a few thousand ticks (used for the teaser).
+  // between the food over a few thousand ticks (used for the teaser). Real walls (bounce, sensors
+  // treat the outside as off-limits): with a periodic box the network keeps filling the space.
   '3D · converging network (Jones SA 45°)': {
     mode: '3d',
     over: { agentCount: 4000, sensorAngle: 45, rotationAngle: 45, sensorOffset: 3, collision: true,
-            diffuse: 0.3, boundary: 'wrap', foodWeight: 0, foodStrength: 5, foodRadius: 2, ticksPerFrame: 4 },
+            diffuse: 0.3, boundary: 'bounce', wallRepel: true, wallResponse: 'reflect', foodWeight: 0,
+            foodStrength: 5, foodRadius: 2, ticksPerFrame: 4 },
     food: 8,
   },
 

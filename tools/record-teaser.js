@@ -13,14 +13,14 @@
 const EXAMPLE = '3D · converging network (Jones SA 45°)';
 
 export async function recordTeaser({
-  shapes = ['sphere', 'torus'],
+  shapes = ['box', 'sphere'],
   size = 800,
   grow = 130,       // frames while the network forms and converges
   hold = 40,        // frames at normal speed at the end
   mature = 4500,    // simulation tick reached at the end of the grow phase
   holdTicks = 3,    // ticks per frame during the hold
   elevation = 0.42, // camera elevation (radians)
-  zoom = 0.85,      // camera distance relative to the site's default framing
+  zoom = { box: 1.1 }, // camera distance relative to the site's default framing, per shape (default 0.85)
   url = 'http://localhost:8001/frame/',
 } = {}) {
   const { app, params } = window.app ? { app: window.app, params: window.app.params } : {};
@@ -45,7 +45,7 @@ export async function recordTeaser({
     view.placePlane && (view.placePlane.visible = false);
     view.preview.visible = false;
 
-    const dist = zoom * view.camera.position.length();
+    const dist = (zoom[shape] ?? 0.85) * view.camera.position.length();
     let azimuth = Math.atan2(view.camera.position.y, view.camera.position.x);
     const tickAt = (f) => (f < grow ? Math.round(mature * ((f + 1) / grow) ** 1.7) : mature + (f - grow + 1) * holdTicks);
 

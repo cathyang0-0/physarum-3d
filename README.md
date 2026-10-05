@@ -75,13 +75,13 @@ Then, in the browser console on http://localhost:8000:
 
 ```js
 const { recordTeaser } = await import('/tools/record-teaser.js');
-await recordTeaser();               // sphere and torus, "converging network" setup
+await recordTeaser();               // box and sphere, "converging network" setup
 ```
 
 and assemble the GIF (Python + Pillow):
 
 ```bash
-python3 tools/frames_to_gif.py out/frames out/teaser.gif 15 170 sphere,torus
+python3 tools/frames_to_gif.py out/frames out/teaser.gif 15 170 box,sphere
 ```
 
 (`tools/teaser.mjs` is an older headless renderer that draws the network only.)
