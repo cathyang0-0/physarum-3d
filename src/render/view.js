@@ -8,6 +8,7 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { DOMAIN_MARGIN } from '../sim/domain.js';
 
 const WORLD_SIZE = 10; // longest grid side maps to this many world units
 
@@ -58,6 +59,8 @@ export class View {
     // Bounding box
     const box = new THREE.Box3Helper(new THREE.Box3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(nx, ny, nz)), LINE);
     this.root.add(box);
+    this.mask = sim.mask;
+    if (!this.is2D) this.addDomainOutline(sim.params.domain, nx, ny, nz);
 
     if (this.is2D) {
       this.texData = new Uint8Array(nx * ny * 4);
@@ -113,6 +116,24 @@ export class View {
     this.resetCamera();
   }
 
+  // Faint outline of the habitable shape (3D). Shapes as in sim/domain.js, z = up.
+  addDomainOutline(domain, nx, ny, nz) {
+    const h = (nx / 2) * DOMAIN_MARGIN;
+    let geo = null, wire = false;
+    if (domain === 'sphere') { geo = new THREE.SphereGeometry(h, 18, 10).rotateX(Math.PI / 2); wire = true; }
+    if (domain === 'pyramid') geo = new THREE.ConeGeometry(h * Math.SQRT2, 2 * h, 4, 1).rotateY(Math.PI / 4).rotateX(Math.PI / 2);
+    if (domain === 'cone') geo = new THREE.ConeGeometry(h, 2 * h, 16, 1).rotateX(Math.PI / 2);
+    if (domain === 'torus') { geo = new THREE.TorusGeometry(0.62 * h, 0.32 * h, 10, 36); wire = true; }
+    if (!geo) return; // box: the box itself; gyroid: too intricate to outline
+    const lines = new THREE.LineSegments(
+      wire ? new THREE.WireframeGeometry(geo) : new THREE.EdgesGeometry(geo, 1),
+      new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: wire ? 0.07 : 0.18, depthWrite: false }),
+    );
+    geo.dispose();
+    lines.position.set(nx / 2, ny / 2, nz / 2);
+    this.root.add(lines);
+  }
+
   // OrbitControls reads camera.up once, when it is created, to decide which way is "up" for
   // orbiting. So it is (re)created after camera.up is set — otherwise, with our z-up 3D scene,
   // dragging up/down turns the view sideways. Re-creating also drops leftover drag momentum.
@@ -157,8 +178,10 @@ export class View {
     this.trailObj.visible = p.showTrail;
     if (p.showTrail && this.is2D) {
       const td = this.texData;
+      const mask = this.mask;
       for (let i = 0; i < data.length; i++) {
-        const g = 255 - ((255 * (1 - Math.exp(-data[i] / scale))) | 0); // white → black
+        // white → black; outside the habitable shape a light grey
+        const g = mask && !mask[i] ? 238 : 255 - ((255 * (1 - Math.exp(-data[i] / scale))) | 0);
         td[4 * i] = g; td[4 * i + 1] = g; td[4 * i + 2] = g; td[4 * i + 3] = 255;
       }
       this.tex.needsUpdate = true;

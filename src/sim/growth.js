@@ -1,4 +1,4 @@
-// "Growth" model — OUR DESIGN, NOT FROM JONES. See NOTES.md "Growth model".
+// "Growth" model — OUR DESIGN, NOT FROM JONES.
 //
 // Goal: Physarum-like behaviour — grow out from an inoculation site, explore, connect food,
 // prune branches that lead nowhere. Each rule below is a separate switch so its effect can be

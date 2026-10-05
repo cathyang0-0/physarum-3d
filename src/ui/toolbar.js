@@ -7,6 +7,11 @@ const $ = (id) => document.getElementById(id);
 export function buildToolbar(app) {
   const p = app.params;
 
+  $('domainBar').addEventListener('click', (e) => {
+    const d = e.target.closest('button')?.dataset.domain;
+    if (d) app.actions.setDomain(d);
+  });
+
   // Clicking the active mode again reloads its setup (fresh start).
   $('modeSeg').addEventListener('click', (e) => {
     const m = e.target.dataset.mode;
@@ -35,6 +40,7 @@ export function buildToolbar(app) {
 export function updateToolbar(app) {
   const p = app.params;
   for (const b of $('modeSeg').children) b.classList.toggle('on', b.dataset.mode === p.mode);
+  for (const b of $('domainBar').children) b.classList.toggle('on', b.dataset.domain === p.domain);
   $('playBtn').textContent = p.running ? 'Pause' : 'Play';
   $('planeCtl').style.display = p.mode === '3d' ? '' : 'none';
   $('help3d').style.display = p.mode === '3d' ? '' : 'none';

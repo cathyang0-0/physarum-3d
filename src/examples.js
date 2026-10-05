@@ -1,6 +1,6 @@
 // Built-in setups (toolbar → Examples). Each is a set of parameter overrides on top of the mode's
 // base parameters (params.js), plus how many random food sources to scatter (seeded, so
-// reproducible). The 2D / 3D toggle loads MAIN[mode]. Details and numbers: NOTES.md.
+// reproducible). The 2D / 3D toggle loads MAIN[mode].
 
 // Overrides that the older 2D setups were tuned with (the 2D base before 2026-10-04).
 const OLD_2D_BASE = { gridX: 256, gridY: 256, agentCount: 9830, sensorAngle: 90, sensorOffset: 15 };
@@ -19,7 +19,7 @@ export const EXAMPLES = {
 
   // The same rules in 3D (our extension: cone sensors, 64³). Tuned, not from source: 4 000 agents
   // (%p ≈1.5), SO 3, partial diffusion 0.3 — together they cut the median tube diameter from 14.6%
-  // to 5.3% of the box (NOTES.md "Thinner 3D tubes"). Food strength 5: with many food sources,
+  // to 5.3% of the box, measured on tube cross-sections. Food strength 5: with many food sources,
   // stronger food pulls most agents into halos around the food.
   '3D · organic network (Jones rules in 3D)': {
     mode: '3d',

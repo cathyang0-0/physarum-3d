@@ -23,6 +23,14 @@
     #modeSeg button:last-child { border-radius: 0 4px 4px 0; }
     #modeSeg button.on { background: #000; color: #fff; border-color: #000; }
 
+    /* ---- habitable shape, vertical icon bar on the left ---- */
+    #domainBar { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); z-index: 10;
+                 display: flex; flex-direction: column; gap: 6px; }
+    #domainBar button { width: 40px; height: 40px; padding: 0; display: grid; place-items: center; }
+    #domainBar button svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.4;
+                            stroke-linejoin: round; stroke-linecap: round; pointer-events: none; }
+    #domainBar button.on { background: #000; color: #fff; border-color: #000; }
+
     /* ---- controls along the bottom ---- */
     #controls { position: absolute; left: 0; right: 0; bottom: 0; height: var(--bottom); box-sizing: border-box;
                 display: flex; align-items: center; gap: 8px; padding: 0 16px; z-index: 10;
@@ -64,6 +72,14 @@
   <div id="view"></div>
   <div id="stats"></div>
   <div id="help">click: add food · shift-click: remove food · <span id="helpDrag"></span> · wheel: zoom<span id="help3d"> · shift+wheel or ↑/↓: move food plane</span></div>
+  <div id="domainBar" title="Shape the slime mold grows in">
+    <button data-domain="box" title="Box"><svg viewBox="0 0 24 24"><path d="M12 3 20 7.5v9L12 21 4 16.5v-9Z M4 7.5 12 12l8-4.5 M12 12v9"/></svg></button>
+    <button data-domain="sphere" title="Sphere"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="8.5" ry="3"/></svg></button>
+    <button data-domain="pyramid" title="Pyramid"><svg viewBox="0 0 24 24"><path d="M12 3 3.5 17 12 21l8.5-4Z M12 3v18"/></svg></button>
+    <button data-domain="cone" title="Cone"><svg viewBox="0 0 24 24"><path d="M12 3 4 17.5 M12 3l8 14.5"/><ellipse cx="12" cy="17.5" rx="8" ry="3"/></svg></button>
+    <button data-domain="torus" title="Torus"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9" ry="5.5"/><path d="M8 11.5c2.5 2 5.5 2 8 0 M9.2 12.6c1.8-1.3 3.8-1.3 5.6 0"/></svg></button>
+    <button data-domain="gyroid" title="Gyroid (labyrinth)"><svg viewBox="0 0 24 24"><path d="M3 7c3-4 6 4 9 0s6 4 9 0 M3 12c3-4 6 4 9 0s6 4 9 0 M3 17c3-4 6 4 9 0s6 4 9 0"/></svg></button>
+  </div>
   <div id="controls">
     <button id="playBtn">Pause</button>
     <button id="stepBtn">Step</button>

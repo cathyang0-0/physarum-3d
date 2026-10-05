@@ -11,6 +11,7 @@ Project 1, DESIGN 4197 — AI, Design & Creativity (Cornell AAP), Fall 2026.
 ## Try it
 
 - **2D / 3D** (top): switch dimension. Each loads the best-working setup for that mode.
+- **Shape** (left): the space it grows in — box, sphere, pyramid, cone, torus, gyroid.
 - **Click** to add food, **Shift-click** to remove it.
 - **3D**: drag to rotate, right-drag to pan, wheel to zoom. The grey plane is where clicks place
   food — move it with **Shift + wheel**, the **↑ / ↓** keys, or the **plane z** slider.
@@ -36,11 +37,13 @@ every tick.
 The main setups use Jones's dynamic regime (sensor angle 22.5°, rotation angle 45°), in which the
 network keeps branching and closing loops instead of settling. In 3D the three sensors become a
 front sensor plus a cone of sensors around the heading; this extension, the partial diffusion,
-and the other non-Jones options are design choices, documented in [NOTES.md](NOTES.md).
-
-[NOTES.md](NOTES.md) is the working log: every deviation from the sources, where every
-parameter value comes from ("from source" vs "tuned"), and the experiments behind each setup.
+and the other non-Jones options are design choices, marked as such in the code
+(`src/params.js` says for every parameter whether its value is from the source or tuned).
 [SPEC.md](SPEC.md) is the original build spec.
+
+**Shapes** (left bar): the slime mold can grow inside a box, sphere, pyramid, cone, torus or a
+gyroid labyrinth. As in Jones's model, where the habitable area is given by an image, cells outside
+the shape are off-limits: agents cannot enter them and trail there is lost.
 
 ## Run locally
 
@@ -73,6 +76,7 @@ src/sim/        simulation (plain JS, typed arrays, no DOM — also runs in Node
   rules2d.js      Jones's sense / rotate / move / deposit rules in 2D
   rules3d.js      the same rules with a cone of sensors in 3D
   trail.js        trail grid, diffusion + decay
+  domain.js       habitable shapes (cell masks)
   adapt.js        population adaptation (ours)
   growth.js       growth model (ours)
 src/render/     three.js view

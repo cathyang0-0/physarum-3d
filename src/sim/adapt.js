@@ -1,5 +1,5 @@
 // Population adaptation — OUR DESIGN, NOT FROM JONES (possibly similar in spirit to later Jones
-// papers; not verified). See NOTES.md "Population adaptation".
+// papers; not verified).
 //
 // Problem it solves: with a fixed population, a network that contracts onto short paths must get
 // thicker (the agents have to go somewhere). Here the population follows the network instead:

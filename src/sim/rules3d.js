@@ -167,7 +167,9 @@ function move(ctx, i) {
     if (z < 0 || z >= trail.nz) sim.hz[i] = -sim.hz[i];
     return;
   }
-  const blocked = target < 0 || (sim.occupancy && target !== current && sim.occupancy[target]);
+  // Blocked: off the grid, outside the habitable shape (like a Jones obstacle), or occupied.
+  const blocked = target < 0 || (sim.mask && !sim.mask[target]) ||
+    (sim.occupancy && target !== current && sim.occupancy[target]);
   if (blocked) {
     sim.randomizeHeading3D(i);
     return;

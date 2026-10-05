@@ -7,11 +7,12 @@
 //   3. energy, death, division                     (growth model only, growth.js)
 //   4. trail = mean3x3[x3](trail) * (1 - decay)
 //
-// params.model: 'jones' = the source model; 'growth' = our Physarum-like extension (NOTES.md).
+// params.model: 'jones' = the source model; 'growth' = our Physarum-like extension (growth.js).
 
 import { mulberry32, shuffle } from './rng.js';
 import { updateFoodField, lifeCycle } from './growth.js';
 import { adaptPopulation } from './adapt.js';
+import { buildDomain } from './domain.js';
 import { TrailGrid } from './trail.js';
 import { stepAgents2D, wrapCoord } from './rules2d.js';
 import { stepAgents3D } from './rules3d.js';
@@ -35,6 +36,10 @@ export class Simulation {
     const p = this.params;
     const nx = p.gridX | 0, ny = p.gridY | 0, nz = this.is2D ? 1 : p.gridZ | 0;
     this.trail = new TrailGrid(nx, ny, nz);
+    // Habitable shape (domain.js). mask = null means the whole box.
+    const dom = buildDomain(p.domain ?? 'box', nx, ny, nz);
+    this.mask = dom.mask;
+    this.domainFraction = dom.fraction;
     this.rand = mulberry32(p.seed);
     this.foodRand = mulberry32((p.seed ^ 0x9e3779b9) >>> 0); // separate stream for scattering food
     this.tick = 0;
@@ -43,8 +48,10 @@ export class Simulation {
     // Growth needs one-agent-per-cell: crowding is what pushes the colony outwards, and without
     // it divided agents pile up in one spot. So collision is always on in the growth model.
     this.collision = p.collision || this.isGrowth;
-    const maxAgents = this.collision ? Math.floor(this.trail.size * 0.9) : Infinity;
-    const clamp = (v) => Math.max(1, Math.min(v | 0, maxAgents));
+    const maxAgents = this.collision ? Math.floor(this.trail.size * this.domainFraction * 0.9) : Infinity;
+    // Agent counts are given for the full box; inside a smaller shape they are scaled by its volume
+    // fraction, so the density (%p) stays the same whatever the shape.
+    const clamp = (v) => Math.max(1, Math.min(Math.round(v * this.domainFraction), maxAgents));
     // Jones: fixed population. Growth: start small, arrays sized for the maximum population.
     // Jones + adapt: start at agentCount, may grow up to maxAgents.
     this.capacity = clamp(this.isGrowth ? p.maxAgents : p.adapt ? Math.max(p.agentCount, p.maxAgents) : p.agentCount);
@@ -92,7 +99,7 @@ export class Simulation {
         x = r() * t.nx; y = r() * t.ny; z = this.is2D ? 0.5 : r() * t.nz;
       }
       const cell = t.cellOf(x, y, z, false);
-      if (cell < 0) continue;
+      if (cell < 0 || (this.mask && !this.mask[cell])) continue;
       if (this.occupancy) {
         if (this.occupancy[cell]) continue;
         this.occupancy[cell] = 1;
@@ -131,6 +138,11 @@ export class Simulation {
     if (!this.isGrowth) adaptPopulation(this); // no-op unless params.adapt
     if (this.params.shrinkProb > 0) this.shrinkPopulation();
     this.trail.diffuseDecay(this.params.decay, this.params.boundary, this.params.diffuse);
+    if (this.mask) {
+      // Outside the shape there is no medium: attractant that diffuses out of it is lost.
+      const d = this.trail.data, m = this.mask;
+      for (let i = 0; i < d.length; i++) if (!m[i]) d[i] = 0;
+    }
     this.tick++;
   }
 
@@ -143,10 +155,12 @@ export class Simulation {
     // away from walls one sensor offset before reaching them.
     const outside = this.params.wallRepel ? -Infinity : 0;
     const useFood = this.params.foodWeight !== 0 && this.sources.length > 0;
-    if (!useFood && outside === 0) return (x, y, z) => t.sample(x, y, z, wrap);
+    const mask = this.mask; // outside the habitable shape counts as outside the domain
+    if (!useFood && outside === 0 && !mask) return (x, y, z) => t.sample(x, y, z, wrap);
     return (x, y, z, fw) => {
       const i = t.cellOf(x, y, z, wrap);
-      return i < 0 ? outside : useFood ? t.data[i] + fw * food[i] : t.data[i];
+      if (i < 0 || (mask && !mask[i])) return outside;
+      return useFood ? t.data[i] + fw * food[i] : t.data[i];
     };
   }
 
@@ -197,7 +211,7 @@ export class Simulation {
     for (let attempt = 0; attempt < 100; attempt++) {
       const x = r() * t.nx, y = r() * t.ny, z = this.is2D ? 0.5 : r() * t.nz;
       const c = t.cellOf(x, y, z, false);
-      if (this.occupancy && this.occupancy[c]) continue;
+      if ((this.mask && !this.mask[c]) || (this.occupancy && this.occupancy[c])) continue;
       if (this.occupancy) {
         this.occupancy[t.cellOf(this.px[i], this.py[i], this.pz[i], false)] = 0;
         this.occupancy[c] = 1;
@@ -231,7 +245,7 @@ export class Simulation {
       let x = this.px[parent] + dx, y = this.py[parent] + dy, z = this.pz[parent] + dz;
       if (wrap) { x = wrapCoord(x, t.nx); y = wrapCoord(y, t.ny); if (!this.is2D) z = wrapCoord(z, t.nz); }
       const c = t.cellOf(x, y, z, wrap);
-      if (c < 0 || (this.occupancy && this.occupancy[c])) continue;
+      if (c < 0 || (this.mask && !this.mask[c]) || (this.occupancy && this.occupancy[c])) continue;
       if (this.occupancy) this.occupancy[c] = 1;
       this.copyAgent(parent, j);
       this.px[j] = x; this.py[j] = y; this.pz[j] = z;
@@ -270,12 +284,17 @@ export class Simulation {
     const t = this.trail, m = 0.1; // keep 10% away from the walls
     for (let k = 0; k < count; k++) {
       const f = this.foodRand;
-      this.addSource({
-        x: t.nx * (m + (1 - 2 * m) * f()),
-        y: t.ny * (m + (1 - 2 * m) * f()),
-        z: t.nz * (m + (1 - 2 * m) * f()),
-      });
+      for (let attempt = 0; attempt < 200; attempt++) { // inside the habitable shape
+        const pos = { x: t.nx * (m + (1 - 2 * m) * f()), y: t.ny * (m + (1 - 2 * m) * f()), z: t.nz * (m + (1 - 2 * m) * f()) };
+        if (this.isHabitable(pos)) { this.addSource(pos); break; }
+      }
     }
+  }
+
+  // Is this grid position inside the habitable shape?
+  isHabitable(pos) {
+    const c = this.trail.cellOf(pos.x, pos.y, this.is2D ? 0.5 : pos.z, false);
+    return c >= 0 && (!this.mask || this.mask[c] === 1);
   }
 
   // Each tick, every attract source adds `strength` to every cell within `foodRadius`.

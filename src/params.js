@@ -1,9 +1,9 @@
 // All model / UI parameters, with defaults for each mode.
-// Provenance of every value is logged in NOTES.md ("from source" vs "tuned, not from source").
+// Each value is marked "from source" (with the reference) or "tuned, not from source".
 // A preset file is just { format, version, params, food } — see ui/presets.js.
 
 // Parameters that change array sizes or initial state: editing them triggers a reset.
-export const STRUCTURAL = ['mode', 'model', 'adapt', 'initialAgents', 'maxAgents', 'gridX', 'gridY', 'gridZ', 'agentCount', 'seed', 'collision', 'spawnAt', 'spawnRadius'];
+export const STRUCTURAL = ['mode', 'domain', 'model', 'adapt', 'initialAgents', 'maxAgents', 'gridX', 'gridY', 'gridZ', 'agentCount', 'seed', 'collision', 'spawnAt', 'spawnRadius'];
 
 // Base values: Jones 2010 Table 1 (p.134). (Until 2026-10-04 the 2D base used the arXiv:1511.07654
 // values SA 90, SO 15 on 256²; examples tuned on that base pin those values explicitly.)
@@ -12,7 +12,7 @@ const MODEL_FROM_SOURCE = {
   rotationAngle: 45,   // RA, degrees — Jones 2010 Table 1
   stepSize: 1,         // SS, cells per tick — Jones 2010 Table 1
   deposit: 5,          // depT, per successful move — Jones 2010 Table 1
-  decay: 0.1,          // decayT — Jones 2010 Table 1; formula is our reading, see NOTES.md
+  decay: 0.1,          // decayT — Jones 2010 Table 1; formula trail = mean · (1 − decay) is our reading
   diffuse: 1,          // 1 = full 3×3 mean (Jones); < 1 = partial blur, tuned, not from source
   bothSidesBetter: 'towardLarger', // arXiv:1212.0023 Fig. 1b
 };
@@ -21,6 +21,7 @@ export const DEFAULTS_2D = {
   mode: '2d',
   model: 'jones',      // 'jones' = source model; 'growth' = our extension (src/sim/growth.js)
   gridX: 200, gridY: 200, gridZ: 1, // Jones 2010 Table 1: 200 × 200
+  domain: 'box',       // habitable shape: box | sphere | pyramid | cone | torus | gyroid (domain.js)
   agentCount: 6000,    // %p 15 of 200² — Jones 2010 Table 1 (%p 3–15)
   seed: 1,
   ...MODEL_FROM_SOURCE,
@@ -35,7 +36,7 @@ export const DEFAULTS_2D = {
   // food
   foodStrength: 10, foodRadius: 2, foodPlaneZ: 0, scatterCount: 6,
   spawnAt: 'uniform', spawnRadius: 12,
-  // growth model only — all tuned, not from source (see NOTES.md "Growth model")
+  // growth model only — all tuned, not from source (see src/sim/growth.js)
   initialAgents: 300,    // agents at the inoculation site at t = 0
   maxAgents: 12000,      // population cap (array size)
   foodWeight: 0,         // 0 = off (pure Jones). sensing reads trail + foodWeight · foodField

@@ -108,7 +108,9 @@ function move(ctx, i) {
     sim.heading[i] = Math.atan2(hy, hx);
     return;
   }
-  const blocked = target < 0 || (sim.occupancy && target !== current && sim.occupancy[target]);
+  // Blocked: off the grid, outside the habitable shape (like a Jones obstacle), or occupied.
+  const blocked = target < 0 || (sim.mask && !sim.mask[target]) ||
+    (sim.occupancy && target !== current && sim.occupancy[target]);
   if (blocked) {
     sim.heading[i] = rand() * 2 * Math.PI;
     return;

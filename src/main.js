@@ -65,9 +65,21 @@ const app = {
       }
     },
     loadDefaults: () => app.setMode(params.mode), // = reload the main setup for this mode
+    // Change the habitable shape: restart, with the same number of food sources re-scattered
+    // inside the new shape.
+    setDomain: (domain) => {
+      const nFood = sim.sources.length;
+      params.domain = domain;
+      sim.clearSources();
+      sim.reset(); // builds the new mask (needed to scatter food inside it) and re-seeds the food rng
+      sim.scatterSources(nFood);
+      app.reset();
+    },
     loadExample: (name) => {
       const ex = EXAMPLES[name];
+      const domain = params.domain; // the chosen shape survives mode switches and examples
       Object.assign(params, defaultsFor(ex.mode), ex.over, { running: true });
+      if (ex.over.domain === undefined) params.domain = domain;
       if (ex.model === 'growth') { app.setModel('growth'); return; }
       sim.clearSources();
       sim.reset(); // re-seed the food rng
@@ -128,7 +140,7 @@ canvas.addEventListener('pointerup', (e) => {
   const pos = view.pickOnPlane(e.clientX, e.clientY, params.foodPlaneZ);
   if (!pos) return;
   if (e.shiftKey) sim.removeSourceNear(pos, Math.max(6, params.foodRadius * 3));
-  else sim.addSource(pos);
+  else if (sim.isHabitable(pos)) sim.addSource(pos); // food only inside the shape
 });
 
 // ---- Main loop ----------------------------------------------------------------------------
