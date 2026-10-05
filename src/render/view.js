@@ -122,7 +122,7 @@ export class View {
     // Hover preview: where a click would place food
     const pr = Math.max(1.2, Math.max(nx, ny) / 110);
     this.preview = new THREE.Mesh(
-      this.is2D ? new THREE.CircleGeometry(pr, 24) : new THREE.SphereGeometry(1.2, 16, 12),
+      this.is2D ? new THREE.CircleGeometry(pr, 24) : new THREE.SphereGeometry(Math.max(1.2, nx / 53), 16, 12),
       new THREE.MeshBasicMaterial({ color: INK, transparent: true, opacity: 0.3, depthWrite: false }),
     );
     this.preview.visible = false;
@@ -282,7 +282,7 @@ export class View {
     // Food = a small fixed-size black dot (2D) or sphere (3D), the same in every model, so the
     // pictures are comparable. (Its size does not show foodRadius.)
     const r = Math.max(1.2, Math.max(this.dims.nx, this.dims.ny) / 110);
-    const geo = this.is2D ? new THREE.CircleGeometry(r, 24) : new THREE.SphereGeometry(1.2, 16, 12);
+    const geo = this.is2D ? new THREE.CircleGeometry(r, 24) : new THREE.SphereGeometry(Math.max(1.2, this.dims.nx / 53), 16, 12);
     const mat = new THREE.MeshBasicMaterial({ color: INK });
     for (const s of sim.sources) {
       const m = new THREE.Mesh(geo, mat);

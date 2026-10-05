@@ -34,6 +34,7 @@ for (domain of DOMAINS) {
   if (domain !== 'box') { // same finer grid the app uses for shapes (main.js applyShapeResolution)
     p.gridX = p.gridY = p.gridZ = Math.round(p.gridX * 1.5);
     p.agentCount = Math.round(p.agentCount * 1.5 ** 3);
+    p.foodRadius *= 1.5;
   }
   sim = new Simulation(p);
   sim.scatterSources(Number(args.food ?? 10));

@@ -93,7 +93,7 @@ const app = {
       Object.assign(params, defaultsFor(ex.mode), ex.over, { running: true });
       if (ex.over.domain === undefined) params.domain = domain;
       base = { gridX: params.gridX, gridY: params.gridY, gridZ: params.gridZ, agentCount: params.agentCount,
-               ticksPerFrame: params.ticksPerFrame };
+               ticksPerFrame: params.ticksPerFrame, foodRadius: params.foodRadius };
       applyShapeResolution();
       if (ex.model === 'growth') { app.setModel('growth'); return; }
       sim.clearSources();
@@ -111,10 +111,12 @@ const app = {
     },
   },
 };
-// Shapes other than the box fill only part of the grid, so they get a finer grid (1.5× per side)
-// to leave room for the network relative to the food and the tube width. Agent counts scale with
-// the grid volume (same density); fewer ticks per frame keep the view smooth. `base` holds the
-// loaded setup's own values.
+// Shapes other than the box fill only part of the grid, so they are made 1.5× larger (in cells):
+// the grid grows 1.5× per side while cell size, tube width and sensor offset stay the same, which
+// leaves room for the network inside the shape. Everything that should keep its share of the
+// shape scales with it: agent count with the volume (same density), food radius with the side
+// (so food covers the same fraction of the shape). Fewer ticks per frame keep the view smooth.
+// `base` holds the loaded setup's own values.
 let base = null;
 function applyShapeResolution() {
   if (!base) return;
@@ -124,6 +126,7 @@ function applyShapeResolution() {
   params.gridZ = is3D ? Math.round(base.gridZ * f) : base.gridZ;
   params.agentCount = Math.round(base.agentCount * f ** (is3D ? 3 : 2));
   params.ticksPerFrame = f === 1 ? base.ticksPerFrame : Math.max(1, Math.round(base.ticksPerFrame / 2));
+  params.foodRadius = base.foodRadius * f;
   params.foodPlaneZ = Math.floor(params.gridZ / 2);
 }
 
