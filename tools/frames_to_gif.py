@@ -12,10 +12,10 @@ fps = float(sys.argv[3]) if len(sys.argv) > 3 else 15
 per = int(sys.argv[4]) if len(sys.argv) > 4 else 80            # frames per shape (grow + hold in teaser.mjs)
 names = (sys.argv[5] if len(sys.argv) > 5 else 'box,sphere,torus,gyroid').split(',')
 
-files = sorted(glob.glob(f'{src}/frame_*.pgm'))
+files = sorted(glob.glob(f'{src}/frame_*.pgm')) or sorted(glob.glob(f'{src}/frame_*.png'))
 frames = []
 for k, f in enumerate(files):
-    im = Image.open(f).convert('L')
+    im = Image.open(f).convert('L')  # the site is black on white, so greyscale loses nothing
     d = ImageDraw.Draw(im)
     shape = names[min(k // per, len(names) - 1)]
     d.text((20, im.height - 32), f'Physarum 3D  ·  Jones-model agents  ·  {shape}', fill=110)

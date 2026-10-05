@@ -18,8 +18,9 @@ Project 1, DESIGN 4197 — AI, Design & Creativity (Cornell AAP), Fall 2026.
   food — move it with **Shift + wheel**, the **↑ / ↓** keys, or the **plane z** slider.
 - **2D**: drag to pan, wheel to zoom.
 - **Pause / Step / Reset**, **+ Random food**, **Clear food** (bottom).
-- **Examples…**: other setups — the Jones 2010 "shrinkage" method (a sheet that contracts into a
-  shortest-path tree), our own population-adaptation and growth variants, and the 2D sanity check.
+- **Examples…**: other setups — a converging 3D network (Jones's sensor angle 45°, used in the
+  teaser), the Jones 2010 "shrinkage" method (a sheet that contracts into a shortest-path tree),
+  our own population-adaptation and growth variants, and the 2D sanity check.
 - **Parameters**: every model parameter, live. Presets save and load as JSON.
 
 ## The model
@@ -63,11 +64,27 @@ Headless runs (Node 18+), e.g. for parameter studies:
 node tools/headless.mjs --ticks 2000 --every 500 --out out/run.png
 ```
 
-Teaser animation (writes PNG frames, then a GIF via Python + Pillow):
+Teaser animation, recorded from the page itself (so it looks exactly like the site):
 
 ```bash
-node tools/teaser.mjs && python3 tools/frames_to_gif.py   # box → sphere → torus → gyroid
+python3 tools/serve.py              # the site, port 8000
+python3 tools/record_server.py      # receives frames into out/frames, port 8001
 ```
+
+Then, in the browser console on http://localhost:8000:
+
+```js
+const { recordTeaser } = await import('/tools/record-teaser.js');
+await recordTeaser();               // sphere and torus, "converging network" setup
+```
+
+and assemble the GIF (Python + Pillow):
+
+```bash
+python3 tools/frames_to_gif.py out/frames out/teaser.gif 15 170 sphere,torus
+```
+
+(`tools/teaser.mjs` is an older headless renderer that draws the network only.)
 
 ## Code
 

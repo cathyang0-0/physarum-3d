@@ -28,6 +28,16 @@ export const EXAMPLES = {
     food: 8,
   },
 
+  // Same, with sensor angle 45° = rotation angle: Jones 2010's minimising regime (p.136), where
+  // small loops close and the network contracts. In a closed shape it visibly converges onto paths
+  // between the food over a few thousand ticks (used for the teaser).
+  '3D · converging network (Jones SA 45°)': {
+    mode: '3d',
+    over: { agentCount: 4000, sensorAngle: 45, rotationAngle: 45, sensorOffset: 3, collision: true,
+            diffuse: 0.3, boundary: 'wrap', foodWeight: 0, foodStrength: 5, foodRadius: 2, ticksPerFrame: 4 },
+    food: 8,
+  },
+
   // Jones 2010 §4.2 "plasmodial shrinkage": a dense sheet (≈50% of cells) loses agents at random
   // (0.00025 per agent per step, never readmitted) and contracts onto the food. Source values:
   // SA 45, RA 45, SO 9, 300×300, removal 0.00025. Tuned: disc-shaped start (instead of the full
