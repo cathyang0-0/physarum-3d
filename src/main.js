@@ -1,6 +1,7 @@
 // Entry point: wires simulation, view, GUI and mouse input together.
 
 import { Simulation } from './sim/simulation.js';
+import { mulberry32 } from './sim/rng.js';
 import { View } from './render/view.js';
 import { buildGUI, refreshGUI } from './ui/gui.js';
 import { buildToolbar, updateToolbar } from './ui/toolbar.js';
@@ -65,6 +66,16 @@ const app = {
       }
     },
     loadDefaults: () => app.setMode(params.mode), // = reload the main setup for this mode
+    // New random food positions (same number of sources) and a fresh start. Food positions use a
+    // new random stream each time; the agents still start from the seed.
+    shuffleFood: () => {
+      const n = sim.sources.length || params.scatterCount;
+      sim.clearSources();
+      sim.reset();
+      sim.foodRand = mulberry32((Math.random() * 2 ** 32) >>> 0);
+      sim.scatterSources(n);
+      app.reset();
+    },
     // Change the habitable shape: restart, with the same number of food sources re-scattered
     // inside the new shape.
     setDomain: (domain) => {

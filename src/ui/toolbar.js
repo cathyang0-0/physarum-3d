@@ -22,6 +22,7 @@ export function buildToolbar(app) {
   $('stepBtn').onclick = () => { p.running = false; app.actions.stepOnce(); updateToolbar(app); };
   $('resetBtn').onclick = () => app.actions.reset();
   $('foodBtn').onclick = () => app.actions.scatterFood();
+  $('shuffleBtn').onclick = () => app.actions.shuffleFood();
   $('clearBtn').onclick = () => app.actions.clearFood();
   $('planeZ').oninput = (e) => { p.foodPlaneZ = Number(e.target.value); app.view.flashPlane(); };
 

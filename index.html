@@ -23,6 +23,14 @@
     #modeSeg button:last-child { border-radius: 0 4px 4px 0; }
     #modeSeg button.on { background: #000; color: #fff; border-color: #000; }
 
+    /* ---- "shuffle food": the main action, on its own at the top right ---- */
+    #shuffleBtn { position: absolute; top: 12px; right: 16px; z-index: 10; height: 32px; padding: 0 16px;
+                  display: inline-flex; align-items: center; gap: 8px; font-size: 12px;
+                  background: #000; color: #fff; border-color: #000; }
+    #shuffleBtn:hover { background: #333; }
+    #shuffleBtn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6;
+                      stroke-linecap: round; stroke-linejoin: round; }
+
     /* ---- habitable shape, vertical icon bar on the left ---- */
     #domainBar { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); z-index: 10;
                  display: flex; flex-direction: column; gap: 6px; }
@@ -72,6 +80,10 @@
   <div id="view"></div>
   <div id="stats"></div>
   <div id="help">click: add food · shift-click: remove food · <span id="helpDrag"></span> · wheel: zoom<span id="help3d"> · shift+wheel or ↑/↓: move food plane</span></div>
+  <button id="shuffleBtn" title="Clear the food, place the same number at new random positions, and restart">
+    <svg viewBox="0 0 24 24"><path d="M16 3h5v5 M4 20 21 3 M21 16v5h-5 M15 15l6 6 M4 4l5 5"/></svg>
+    Shuffle food
+  </button>
   <div id="domainBar" title="Shape the slime mold grows in">
     <button data-domain="box" title="Box"><svg viewBox="0 0 24 24"><path d="M12 3 20 7.5v9L12 21 4 16.5v-9Z M4 7.5 12 12l8-4.5 M12 12v9"/></svg></button>
     <button data-domain="sphere" title="Sphere"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><ellipse cx="12" cy="12" rx="8.5" ry="3"/></svg></button>

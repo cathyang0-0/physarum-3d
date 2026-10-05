@@ -12,6 +12,7 @@ Project 1, DESIGN 4197 — AI, Design & Creativity (Cornell AAP), Fall 2026.
 
 - **2D / 3D** (top): switch dimension. Each loads the best-working setup for that mode.
 - **Shape** (left): the space it grows in — box, sphere, pyramid, cone, torus, gyroid.
+- **Shuffle food** (top right): new random food positions and a fresh start.
 - **Click** to add food, **Shift-click** to remove it.
 - **3D**: drag to rotate, right-drag to pan, wheel to zoom. The grey plane is where clicks place
   food — move it with **Shift + wheel**, the **↑ / ↓** keys, or the **plane z** slider.
