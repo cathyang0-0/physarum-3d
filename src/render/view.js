@@ -8,7 +8,8 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { DOMAIN_MARGIN, TORUS_R, TORUS_r, GYROID_T, gyroidValue, shapeContains } from '../sim/domain.js';
+import { DOMAIN_MARGIN, TORUS_R, TORUS_r, shapeContains } from '../sim/domain.js';
+import { buildGyroidView } from './gyroid.js';
 
 const WORLD_SIZE = 10; // longest grid side maps to this many world units
 
@@ -31,6 +32,11 @@ export class View {
 
     this.root = new THREE.Group();
     this.scene.add(this.root);
+    // Lights: only the shaded gyroid surface uses them (everything else is unlit).
+    this.scene.add(new THREE.AmbientLight(0xffffff, 1.6));
+    const sun = new THREE.DirectionalLight(0xffffff, 1.4);
+    sun.position.set(-4, -6, 10);
+    this.scene.add(sun);
 
     window.addEventListener('resize', () => this.resize());
     this.resize();
@@ -56,12 +62,11 @@ export class View {
     this.root.position.set((-nx / 2) * s, (-ny / 2) * s, (-nz / 2) * s);
     this.root.updateMatrixWorld();
 
-    // Bounding box: only when the shape is the box itself (and, very faint, for the gyroid, which is
-    // a labyrinth cut to the box). Other shapes show their own outline instead.
+    // Bounding box: only when the shape is the box itself. Other shapes show their own outline
+    // (the gyroid draws its cut faces and section lines, render/gyroid.js).
     const domain = (this.domain = sim.params.domain ?? 'box');
-    if (this.is2D || domain === 'box' || domain === 'gyroid') {
-      const color = !this.is2D && domain === 'gyroid' ? 0xe8e8e8 : LINE;
-      this.root.add(new THREE.Box3Helper(new THREE.Box3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(nx, ny, nz)), color));
+    if (this.is2D || domain === 'box') {
+      this.root.add(new THREE.Box3Helper(new THREE.Box3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(nx, ny, nz)), LINE));
     }
     this.mask = sim.mask;
     if (!this.is2D) this.addDomainOutline(sim.params.domain, nx, ny, nz);
@@ -84,6 +89,7 @@ export class View {
       const m = new THREE.PointsMaterial({ size: 1, vertexColors: true, transparent: true, depthWrite: false });
       this.trailObj = new THREE.Points(g, m);
       this.trailObj.frustumCulled = false;
+      this.trailObj.renderOrder = 2; // drawn over the (non-depth-writing) shape surfaces
       this.root.add(this.trailObj);
 
       // Food placement plane at z = foodPlaneZ, drawn as the shape's cross-section at that height.
@@ -134,7 +140,11 @@ export class View {
     if (domain === 'pyramid') geo = new THREE.ConeGeometry(h * Math.SQRT2, 2 * h, 4, 1).rotateY(Math.PI / 4).rotateX(Math.PI / 2);
     if (domain === 'cone') geo = new THREE.ConeGeometry(h, 2 * h, 16, 1).rotateX(Math.PI / 2);
     if (domain === 'torus') { geo = new THREE.TorusGeometry(TORUS_R * h, TORUS_r * h, 10, 36); wire = true; }
-    if (domain === 'gyroid') { this.addGyroidStipple(nx, ny, nz); return; }
+    if (domain === 'gyroid') {
+      const m = DOMAIN_MARGIN;
+      this.root.add(buildGyroidView((u, v, w) => [((u * m + 1) / 2) * nx, ((v * m + 1) / 2) * ny, ((w * m + 1) / 2) * nz]));
+      return;
+    }
     if (!geo) return; // box: the box frame is its outline
     const lines = new THREE.LineSegments(
       wire ? new THREE.WireframeGeometry(geo) : new THREE.EdgesGeometry(geo, 1),
@@ -143,22 +153,6 @@ export class View {
     geo.dispose();
     lines.position.set(nx / 2, ny / 2, nz / 2);
     this.root.add(lines);
-  }
-
-  // The gyroid's channel walls, drawn as a faint stipple of points on the surface |g| = T, so the
-  // labyrinth can be seen (a wireframe of it would be unreadable).
-  addGyroidStipple(nx, ny, nz) {
-    const pts = [], r = Math.random; // display only: no need for the seeded rng
-    const h = DOMAIN_MARGIN;
-    for (let k = 0; k < 400000 && pts.length < 3 * 26000; k++) {
-      const x = (2 * r() - 1), y = (2 * r() - 1), z = (2 * r() - 1);
-      if (Math.abs(Math.abs(gyroidValue(x, y, z)) - GYROID_T) > 0.02) continue;
-      pts.push(((x * h + 1) / 2) * nx, ((y * h + 1) / 2) * ny, ((z * h + 1) / 2) * nz);
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-    const m = new THREE.PointsMaterial({ color: 0x000000, size: 0.45 * this.root.scale.x, transparent: true, opacity: 0.22, depthWrite: false });
-    this.root.add(new THREE.Points(g, m));
   }
 
   // OrbitControls reads camera.up once, when it is created, to decide which way is "up" for
